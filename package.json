@@ -1,0 +1,68 @@
+{
+  "name": "signalk-lint",
+  "version": "0.1.0",
+  "description": "A linter for Signal K server installations. Deterministic, offline rules over a captured snapshot of your boat's configuration and data model.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "bin": {
+    "signalk-lint": "./dist/cli.js"
+  },
+  "exports": {
+    ".": "./dist/index.js",
+    "./rules": "./dist/rules/index.js",
+    "./types": "./dist/types.js",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "tsc",
+    "watch": "npm run build -- -w",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "format": "prettier-standard 'src/**/*.ts' 'test/**/*.ts'",
+    "update-advisories": "node scripts/update-advisories.mjs",
+    "lint:local": "npm run build && node dist/cli.js --config-dir \"$HOME/symphony/signalk\"",
+    "prepublishOnly": "npm run build"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mark-brannan/signalk-lint.git"
+  },
+  "bugs": {
+    "url": "https://github.com/mark-brannan/signalk-lint/issues"
+  },
+  "homepage": "https://github.com/mark-brannan/signalk-lint#readme",
+  "keywords": [
+    "signalk-node-server-plugin",
+    "signalk-category-utility",
+    "signalk",
+    "lint",
+    "audit",
+    "marine"
+  ],
+  "signalk-plugin-enabled-by-default": false,
+  "signalk": {
+    "displayName": "Lint"
+  },
+  "author": "Mark Brannan",
+  "license": "Apache-2.0",
+  "dependencies": {
+    "semver": "^7.6.3"
+  },
+  "devDependencies": {
+    "@signalk/server-api": "^2.30.0",
+    "@types/express": "^4.17.25",
+    "@types/node": "^22.14.0",
+    "@types/semver": "^7.5.8",
+    "prettier-standard": "^16.4.1",
+    "typescript": "^5.8.3",
+    "vitest": "^3.2.4"
+  }
+}

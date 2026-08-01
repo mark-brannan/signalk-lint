@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "capturedAt": "2026-08-01T00:00:00.000Z",
+  "source": {
+    "kind": "fixture"
+  },
+  "server": {
+    "version": null,
+    "settings": {
+      "port": 3000,
+      "ssl": false,
+      "mdns": true
+    },
+    "security": {
+      "configured": true,
+      "allowReadonly": true,
+      "userCount": 1,
+      "deviceCount": 0,
+      "allowNewUserRegistration": false,
+      "allowDeviceAccessRequests": true
+    },
+    "sourcePriorities": {}
+  }
+}
