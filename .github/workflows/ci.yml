@@ -1,0 +1,43 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # 22 is the floor declared in engines; 24 catches breakage early.
+        node-version: [22, 24]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: npm
+
+      - run: npm ci
+      - run: npm run format:check
+      - run: npm run build
+      - run: npm test
+
+      # Rules are only useful if they still fire. This runs the real CLI
+      # against a fixture with known vulnerabilities and fails if it reports
+      # nothing -- catching the case where the rule silently stops matching,
+      # which unit tests on their own would not notice if the CLI wiring broke.
+      - name: Smoke test the CLI end to end
+        run: |
+          node dist/cli.js --snapshot test/fixtures/current-server.json
+          if node dist/cli.js --snapshot test/fixtures/vulnerable-server.json; then
+            echo "Expected a non-zero exit for a vulnerable snapshot"
+            exit 1
+          fi
