@@ -15,6 +15,7 @@
   },
   "files": [
     "dist",
+    "public",
     "README.md",
     "LICENSE"
   ],
@@ -42,6 +43,7 @@
   "homepage": "https://github.com/mark-brannan/signalk-lint#readme",
   "keywords": [
     "signalk-node-server-plugin",
+    "signalk-webapp",
     "signalk-category-utility",
     "signalk",
     "lint",

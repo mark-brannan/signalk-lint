@@ -1,0 +1,263 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Lint</title>
+    <style>
+      :root {
+        --bg: #ffffff;
+        --fg: #1a1a1a;
+        --muted: #666;
+        --line: #e0e0e0;
+        --card: #fafafa;
+        --error: #c0392b;
+        --warn: #b8860b;
+        --info: #2c6fad;
+        --ok: #2d7a3e;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #1c1c1e;
+          --fg: #e8e8e8;
+          --muted: #9a9a9a;
+          --line: #38383a;
+          --card: #262628;
+          --error: #ff6b5b;
+          --warn: #e0a83c;
+          --info: #5aa9e6;
+          --ok: #5cb85c;
+        }
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        padding: 1.5rem;
+        background: var(--bg);
+        color: var(--fg);
+        font:
+          15px/1.5 -apple-system,
+          BlinkMacSystemFont,
+          'Segoe UI',
+          Roboto,
+          sans-serif;
+      }
+      main {
+        max-width: 820px;
+        margin: 0 auto;
+      }
+      h1 {
+        font-size: 1.4rem;
+        margin: 0 0 0.25rem;
+      }
+      .sub {
+        color: var(--muted);
+        font-size: 0.9rem;
+        margin-bottom: 1.5rem;
+      }
+      .counts {
+        display: flex;
+        gap: 1.25rem;
+        flex-wrap: wrap;
+        padding: 0.75rem 0;
+        border-top: 1px solid var(--line);
+        border-bottom: 1px solid var(--line);
+        margin-bottom: 1.5rem;
+      }
+      .count b {
+        font-size: 1.3rem;
+        display: block;
+      }
+      .count span {
+        color: var(--muted);
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+      }
+      .finding {
+        border: 1px solid var(--line);
+        border-left-width: 4px;
+        border-radius: 4px;
+        padding: 0.9rem 1rem;
+        margin-bottom: 0.75rem;
+        background: var(--card);
+      }
+      .finding.error {
+        border-left-color: var(--error);
+      }
+      .finding.warn {
+        border-left-color: var(--warn);
+      }
+      .finding.info {
+        border-left-color: var(--info);
+      }
+      .finding h2 {
+        font-size: 1rem;
+        margin: 0 0 0.4rem;
+        font-weight: 600;
+      }
+      .meta {
+        font-size: 0.78rem;
+        color: var(--muted);
+        font-family: ui-monospace, monospace;
+        margin-bottom: 0.5rem;
+      }
+      .detail {
+        margin: 0 0 0.6rem;
+      }
+      .fix {
+        padding: 0.5rem 0.7rem;
+        background: var(--bg);
+        border: 1px solid var(--line);
+        border-radius: 3px;
+        font-size: 0.9rem;
+      }
+      .fix b {
+        font-weight: 600;
+      }
+      .refs a {
+        font-size: 0.82rem;
+        color: var(--info);
+        word-break: break-all;
+      }
+      .clean {
+        padding: 2rem;
+        text-align: center;
+        border: 1px solid var(--line);
+        border-radius: 4px;
+        background: var(--card);
+      }
+      .clean b {
+        color: var(--ok);
+        font-size: 1.1rem;
+      }
+      .note {
+        margin-top: 2rem;
+        padding: 1rem 1.1rem;
+        border: 1px solid var(--line);
+        border-radius: 4px;
+        background: var(--card);
+      }
+      .note h3 {
+        margin: 0 0 0.5rem;
+        font-size: 0.95rem;
+      }
+      .note p {
+        margin: 0 0 0.6rem;
+      }
+      .note a {
+        color: var(--info);
+      }
+      code {
+        font-family: ui-monospace, monospace;
+        font-size: 0.88em;
+        background: var(--bg);
+        padding: 0.1em 0.35em;
+        border-radius: 3px;
+        border: 1px solid var(--line);
+      }
+      .err {
+        padding: 1rem;
+        border: 1px solid var(--error);
+        border-radius: 4px;
+        color: var(--error);
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Lint</h1>
+      <div class="sub" id="sub">Loading…</div>
+      <div id="out"></div>
+
+      <div class="note">
+        <h3>About multiple sources for the same value</h3>
+        <p>
+          Boats often have more than one device reporting the same thing — a
+          chartplotter, a GPS antenna and an AIS transponder may all report
+          position. That is normal and not a fault.
+        </p>
+        <p>
+          What matters is whether you have told the server which one you
+          <em>prefer</em>. If you haven't, it uses whatever arrived most
+          recently, which can change without warning.
+        </p>
+        <p>
+          The Data Browser shows every value currently arriving and which
+          sources are producing it. If a value you care about lists more than
+          one source and no priority is configured, that's worth a look.
+        </p>
+        <p>
+          <a href="/admin/#/databrowser">Open the Data Browser</a> · Priorities
+          are set under Data Connections in the admin UI.
+        </p>
+      </div>
+    </main>
+
+    <script>
+      const SEV = ['error', 'warn', 'info']
+
+      function esc(s) {
+        return String(s).replace(
+          /[&<>"]/g,
+          (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]
+        )
+      }
+
+      function render(data) {
+        const out = document.getElementById('out')
+        const sub = document.getElementById('sub')
+        const f = data.findings || []
+
+        const n = (s) => f.filter((x) => x.severity === s).length
+        sub.textContent = f.length
+          ? `${f.length} finding${f.length === 1 ? '' : 's'}`
+          : 'Nothing to report'
+
+        if (!f.length) {
+          out.innerHTML =
+            '<div class="clean"><b>No findings</b><p>Every rule passed against this installation.</p></div>'
+          return
+        }
+
+        let html = '<div class="counts">'
+        for (const s of SEV) {
+          if (n(s))
+            html += `<div class="count"><b style="color:var(--${s})">${n(s)}</b><span>${s}</span></div>`
+        }
+        html += '</div>'
+
+        for (const x of f) {
+          html += `<div class="finding ${esc(x.severity)}">`
+          html += `<h2>${esc(x.title)}</h2>`
+          html += `<div class="meta">${esc(x.ruleId)} · ${esc(x.provenance)}</div>`
+          html += `<p class="detail">${esc(x.detail)}</p>`
+          if (x.remediation)
+            html += `<div class="fix"><b>What to do:</b> ${esc(x.remediation.description)}</div>`
+          if (x.references && x.references.length)
+            html += `<div class="refs">${x.references.map((r) => `<a href="${esc(r)}" target="_blank" rel="noopener">${esc(r)}</a>`).join('<br>')}</div>`
+          html += '</div>'
+        }
+        out.innerHTML = html
+      }
+
+      fetch('/plugins/signalk-lint/findings')
+        .then((r) => {
+          if (r.status === 503)
+            throw new Error(
+              'The plugin has not finished its first run yet. Reload in a moment.'
+            )
+          if (!r.ok) throw new Error(`Server returned ${r.status}`)
+          return r.json()
+        })
+        .then(render)
+        .catch((e) => {
+          document.getElementById('sub').textContent = ''
+          document.getElementById('out').innerHTML =
+            `<div class="err">Could not load findings. ${esc(e.message)}<br><br>Check that the Lint plugin is enabled in the admin UI.</div>`
+        })
+    </script>
+  </body>
+</html>
