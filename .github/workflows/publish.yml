@@ -1,0 +1,48 @@
+name: Publish
+
+# Runs on version tags only (v0.1.0, v0.2.0, ...). Nothing publishes on a
+# plain push to main -- a tag is a deliberate release act.
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write # required for npm OIDC trusted publishing
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: 'https://registry.npmjs.org'
+
+      # Trusted publishing needs npm >= 11.5.1; Node 22's bundled npm may be
+      # older, so pin explicitly rather than trust whatever ships.
+      - run: npm install -g npm@^11.5.1
+
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
+
+      # Tag is the source of truth for what's being released. If it doesn't
+      # match package.json, fail loudly instead of publishing the wrong thing.
+      - name: Verify tag matches package.json version
+        run: |
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          PKG_VERSION="$(node -p "require('./package.json').version")"
+          if [ "$TAG_VERSION" != "$PKG_VERSION" ]; then
+            echo "Tag v$TAG_VERSION does not match package.json version $PKG_VERSION"
+            exit 1
+          fi
+
+      # No NPM_TOKEN secret -- OIDC trusted publishing exchanges the
+      # id-token above for a short-lived publish credential at publish time.
+      - run: npm publish --provenance
