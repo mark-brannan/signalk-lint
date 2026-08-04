@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { collect } from '../src/collect/index.js'
 
-async function configDirWith (files: Record<string, unknown>): Promise<string> {
+async function configDirWith(files: Record<string, unknown>): Promise<string> {
   const dir = await mkdtemp(join(tmpdir(), 'sk-lint-'))
   for (const [name, contents] of Object.entries(files)) {
     await writeFile(join(dir, name), JSON.stringify(contents))

@@ -42,18 +42,22 @@ export default function (app: ServerAPI): Plugin {
   let timer: NodeJS.Timeout | undefined
   let latest: LintResult | undefined
 
-  async function run (): Promise<void> {
+  async function run(): Promise<void> {
     try {
       const configDir = app.getDataDirPath()
       const serverVersion =
-        ((app as unknown) as ServerInternals).config?.version ?? null
+        (app as unknown as ServerInternals).config?.version ?? null
 
       const snapshot = await collect({ configDir, serverVersion })
       const config: LintConfig = {}
       latest = lint(snapshot, config)
 
-      const errors = latest.findings.filter(f => f.severity === 'error').length
-      const warnings = latest.findings.filter(f => f.severity === 'warn').length
+      const errors = latest.findings.filter(
+        (f) => f.severity === 'error'
+      ).length
+      const warnings = latest.findings.filter(
+        (f) => f.severity === 'warn'
+      ).length
 
       app.setPluginStatus(
         latest.findings.length === 0
@@ -121,7 +125,7 @@ export default function (app: ServerAPI): Plugin {
 
       router.get('/rules', (_req, res) => {
         res.json(
-          rules.map(r => ({
+          rules.map((r) => ({
             id: r.id,
             description: r.description,
             defaultSeverity: r.defaultSeverity,

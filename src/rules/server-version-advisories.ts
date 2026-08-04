@@ -15,7 +15,7 @@ import { ADVISORIES, GENERATED_AT, Advisory } from '../data/advisories.js'
 import { Rule, RuleFinding, Severity, Snapshot } from '../types.js'
 
 /** GitHub severity vocabulary -> ours. */
-function severityFor (advisory: Advisory): Severity {
+function severityFor(advisory: Advisory): Severity {
   switch (advisory.severity) {
     case 'critical':
     case 'high':
@@ -28,7 +28,7 @@ function severityFor (advisory: Advisory): Severity {
   }
 }
 
-function isAffected (version: string, advisory: Advisory): boolean {
+function isAffected(version: string, advisory: Advisory): boolean {
   // includePrerelease matters: several Signal K advisories were patched in
   // beta releases (e.g. `< 2.24.0-beta.4`), and without this flag semver
   // refuses to match prerelease versions at all.
@@ -42,9 +42,9 @@ function isAffected (version: string, advisory: Advisory): boolean {
  * affected by. Recommending the highest single target avoids the trap of
  * telling someone to upgrade three times.
  */
-function highestPatch (matches: Advisory[]): string | null {
+function highestPatch(matches: Advisory[]): string | null {
   const patches = matches
-    .map(a => a.firstPatchedVersion)
+    .map((a) => a.firstPatchedVersion)
     .filter((v): v is string => Boolean(v) && semver.valid(v) !== null)
   if (patches.length === 0) return null
   return patches.sort(semver.rcompare)[0]
@@ -57,7 +57,7 @@ export const serverVersionAdvisories: Rule = {
   defaultSeverity: 'error',
   provenance: 'advisory',
 
-  evaluate (snapshot: Snapshot): RuleFinding[] {
+  evaluate(snapshot: Snapshot): RuleFinding[] {
     const version = snapshot.server.version
 
     // An unknown version is reported, not silently passed. A security rule
@@ -100,13 +100,13 @@ export const serverVersionAdvisories: Rule = {
       ]
     }
 
-    const matches = ADVISORIES.filter(a => isAffected(version, a))
+    const matches = ADVISORIES.filter((a) => isAffected(version, a))
     if (matches.length === 0) return []
 
     const target = highestPatch(matches)
     const generatedOn = GENERATED_AT.slice(0, 10)
 
-    return matches.map(advisory => ({
+    return matches.map((advisory) => ({
       title: `${advisory.severity} — ${advisory.summary}`,
       detail:
         `signalk-server ${version} is affected by ${advisory.ghsaId}` +

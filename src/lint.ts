@@ -35,7 +35,7 @@ export const PRESETS: Record<string, Record<string, Severity>> = {
   recommended: {}
 }
 
-function resolveConfig (config: LintConfig): Record<string, Severity> {
+function resolveConfig(config: LintConfig): Record<string, Severity> {
   const base = config.extends ? PRESETS[config.extends] : PRESETS.recommended
   if (config.extends && base === undefined) {
     throw new Error(
@@ -47,7 +47,7 @@ function resolveConfig (config: LintConfig): Record<string, Severity> {
   return { ...base, ...(config.rules ?? {}) }
 }
 
-export function lint (
+export function lint(
   snapshot: Snapshot,
   config: LintConfig = {},
   rules: readonly Rule[] = allRules
@@ -88,6 +88,6 @@ export function lint (
 }
 
 /** True when any finding would justify a non-zero exit code. */
-export function hasErrors (result: LintResult): boolean {
-  return result.findings.some(f => f.severity === 'error')
+export function hasErrors(result: LintResult): boolean {
+  return result.findings.some((f) => f.severity === 'error')
 }

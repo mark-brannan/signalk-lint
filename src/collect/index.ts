@@ -17,9 +17,7 @@ import {
   Snapshot
 } from '../types.js'
 
-async function readJson (
-  path: string
-): Promise<Record<string, unknown> | null> {
+async function readJson(path: string): Promise<Record<string, unknown> | null> {
   try {
     return JSON.parse(await readFile(path, 'utf8')) as Record<string, unknown>
   } catch {
@@ -27,11 +25,11 @@ async function readJson (
   }
 }
 
-function asBool (v: unknown): boolean | null {
+function asBool(v: unknown): boolean | null {
   return typeof v === 'boolean' ? v : null
 }
 
-function countOf (v: unknown): number | null {
+function countOf(v: unknown): number | null {
   return Array.isArray(v) ? v.length : null
 }
 
@@ -43,9 +41,7 @@ function countOf (v: unknown): number | null {
  * you debug -- so a snapshot must never be a credential disclosure. Rules do
  * not need the secrets to reason about posture.
  */
-function securityFactsFrom (
-  raw: Record<string, unknown> | null
-): SecurityFacts {
+function securityFactsFrom(raw: Record<string, unknown> | null): SecurityFacts {
   if (raw === null) {
     return {
       configured: false,
@@ -79,7 +75,7 @@ export interface CollectOptions {
   now?: Date
 }
 
-export async function collect (options: CollectOptions): Promise<Snapshot> {
+export async function collect(options: CollectOptions): Promise<Snapshot> {
   const { configDir, serverVersion = null, now = new Date() } = options
 
   const [settings, security, sourcePriorities] = await Promise.all([

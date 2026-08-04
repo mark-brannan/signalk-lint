@@ -47,7 +47,7 @@ interface Args {
   help: boolean
 }
 
-function parseArgs (argv: string[]): Args {
+function parseArgs(argv: string[]): Args {
   const args: Args = {
     configDir: join(homedir(), '.signalk'),
     json: false,
@@ -92,7 +92,7 @@ function parseArgs (argv: string[]): Args {
  * as a finding, so a null here is visible to the user rather than silently
  * turning the security check into a no-op.
  */
-async function discoverServerVersion (
+async function discoverServerVersion(
   configDir: string
 ): Promise<string | null> {
   const candidates = [
@@ -123,7 +123,7 @@ const COLOURS: Record<Severity, string> = {
 }
 const RESET = '[0m'
 
-function format (findings: Finding[], snapshot: Snapshot): string {
+function format(findings: Finding[], snapshot: Snapshot): string {
   if (findings.length === 0) {
     return `[32m✓[0m No findings. Snapshot captured ${snapshot.capturedAt}.\n`
   }
@@ -142,16 +142,16 @@ function format (findings: Finding[], snapshot: Snapshot): string {
     for (const ref of f.references ?? []) lines.push(`      ${ref}`)
     lines.push('')
   }
-  const errors = findings.filter(f => f.severity === 'error').length
-  const warnings = findings.filter(f => f.severity === 'warn').length
-  const info = findings.filter(f => f.severity === 'info').length
+  const errors = findings.filter((f) => f.severity === 'error').length
+  const warnings = findings.filter((f) => f.severity === 'warn').length
+  const info = findings.filter((f) => f.severity === 'info').length
   lines.push(
     `${findings.length} finding(s): ${errors} error, ${warnings} warn, ${info} info`
   )
   return lines.join('\n') + '\n'
 }
 
-function wrap (text: string, width: number): string[] {
+function wrap(text: string, width: number): string[] {
   const words = text.split(/\s+/)
   const lines: string[] = []
   let current = ''
@@ -167,7 +167,7 @@ function wrap (text: string, width: number): string[] {
   return lines
 }
 
-async function main (): Promise<number> {
+async function main(): Promise<number> {
   const args = parseArgs(process.argv.slice(2))
 
   if (args.help) {
@@ -210,7 +210,7 @@ async function main (): Promise<number> {
 }
 
 main().then(
-  code => process.exit(code),
+  (code) => process.exit(code),
   (error: unknown) => {
     process.stderr.write(`signalk-lint: ${(error as Error).message}\n`)
     process.exit(2)

@@ -5,7 +5,7 @@ import { serverVersionAdvisories } from '../../src/rules/server-version-advisori
 import { lint } from '../../src/lint.js'
 import { Snapshot } from '../../src/types.js'
 
-function fixture (name: string): Snapshot {
+function fixture(name: string): Snapshot {
   const path = join(import.meta.dirname, '..', 'fixtures', `${name}.json`)
   return JSON.parse(readFileSync(path, 'utf8')) as Snapshot
 }
@@ -22,9 +22,9 @@ describe('server/known-vulnerability', () => {
     const findings = rule.evaluate(fixture('vulnerable-server'))
     const targets = new Set(
       findings
-        .map(f => f.remediation)
-        .filter(r => r?.kind === 'upgrade-package')
-        .map(r => r?.proposedValue)
+        .map((f) => f.remediation)
+        .filter((r) => r?.kind === 'upgrade-package')
+        .map((r) => r?.proposedValue)
     )
     // One recommendation, not one per advisory -- nobody should be told to
     // upgrade three times.
@@ -113,7 +113,7 @@ describe('lint()', () => {
     const { findings } = lint(fixture('vulnerable-server'), {
       rules: { 'server/known-vulnerability': 'info' }
     })
-    expect(findings.every(f => f.severity === 'info')).toBe(true)
+    expect(findings.every((f) => f.severity === 'info')).toBe(true)
   })
 
   it('rejects an unknown preset rather than silently linting with defaults', () => {
