@@ -1,8 +1,5 @@
 # signalk-lint
 
-A linter for Signal K server installations — flags misconfigurations, known
-vulnerabilities, and quietly broken setups.
-
 Install from the Signal K app store.
 
 Runs hourly in the background; its webapp entry shows the last run's
