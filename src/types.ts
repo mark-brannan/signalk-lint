@@ -76,6 +76,18 @@ export interface SystemInfo {
    * makes "am I about to fill the SD card" a meaningful question.
    */
   disk: DiskInfo | null
+  /**
+   * Whether a real-time clock device node exists (/dev/rtc0). null when the
+   * platform isn't Linux -- there's no equivalent convention to check, and a
+   * false there would misreport "no RTC" on a dev laptop that has nothing to
+   * do with the question.
+   *
+   * A device node existing is necessary but not sufficient: some hardware
+   * (Raspberry Pi 5 and later) ships an RTC chip that only holds time across
+   * a power cycle once a battery is physically connected. This check cannot
+   * tell a populated RTC from an unpopulated one -- both show a device node.
+   */
+  hasRTC: boolean | null
 }
 
 export interface DiskInfo {

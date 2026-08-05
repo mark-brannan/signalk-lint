@@ -1,0 +1,72 @@
+{
+  "schemaVersion": 1,
+  "capturedAt": "2026-08-01T00:00:00.000Z",
+  "source": {
+    "kind": "fixture"
+  },
+  "server": {
+    "version": "2.30.0",
+    "settings": {
+      "port": 3000,
+      "ssl": false,
+      "mdns": true,
+      "pipedProviders": [
+        {
+          "id": "gps",
+          "enabled": true,
+          "pipeElements": [
+            {
+              "type": "providers/serialport",
+              "options": {
+                "device": "/dev/ttyUSB0",
+                "baudrate": 4800
+              }
+            },
+            {
+              "type": "providers/nmea0183-signalk",
+              "options": {}
+            }
+          ]
+        },
+        {
+          "id": "ais",
+          "enabled": true,
+          "pipeElements": [
+            {
+              "type": "providers/serialport",
+              "options": {
+                "device": "/dev/serial/by-id/usb-Actisense_NGT-1-if00",
+                "baudrate": 38400
+              }
+            },
+            {
+              "type": "providers/nmea0183-signalk",
+              "options": {}
+            }
+          ]
+        }
+      ]
+    },
+    "security": {
+      "configured": true,
+      "allowReadonly": false,
+      "userCount": 1,
+      "deviceCount": 0,
+      "allowNewUserRegistration": false,
+      "allowDeviceAccessRequests": true
+    },
+    "sourcePriorities": {},
+    "system": {
+      "nodeVersion": "v22.11.0",
+      "platform": "linux",
+      "arch": "arm64",
+      "totalMemMB": 3958,
+      "disk": {
+        "totalMB": 29820,
+        "usedMB": 11203,
+        "usedPercent": 37.6
+      },
+      "hasRTC": true
+    }
+  }
+}

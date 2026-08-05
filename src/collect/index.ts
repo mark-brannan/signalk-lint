@@ -8,7 +8,7 @@
  * `null`, not an exception. Half a snapshot is useful; a crash is not. Rules
  * are responsible for saying "I could not evaluate this" when they see a null.
  */
-import { readFile, statfs } from 'node:fs/promises'
+import { access, readFile, statfs } from 'node:fs/promises'
 import { join } from 'node:path'
 import { arch, platform, totalmem } from 'node:os'
 import {
@@ -100,14 +100,31 @@ async function diskInfo(configDir: string): Promise<DiskInfo | null> {
   }
 }
 
+/**
+ * Whether /dev/rtc0 exists. Only meaningful on Linux -- there's no equivalent
+ * convention on macOS/Windows, and checking there would misreport "no RTC" on
+ * a dev machine that was never a candidate for one.
+ */
+async function hasRTC(platformName: string): Promise<boolean | null> {
+  if (platformName !== 'linux') return null
+  try {
+    await access('/dev/rtc0')
+    return true
+  } catch {
+    return false
+  }
+}
+
 async function systemInfo(configDir: string): Promise<SystemInfo> {
   const totalBytes = totalmem()
+  const platformName = platform()
   return {
     nodeVersion: process.version,
-    platform: platform(),
+    platform: platformName,
     arch: arch(),
     totalMemMB: totalBytes ? Math.round(totalBytes / (1024 * 1024)) : null,
-    disk: await diskInfo(configDir)
+    disk: await diskInfo(configDir),
+    hasRTC: await hasRTC(platformName)
   }
 }
 

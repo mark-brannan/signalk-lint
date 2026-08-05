@@ -9,10 +9,19 @@
 import { Rule } from '../types.js'
 import { serverVersionAdvisories } from './server-version-advisories.js'
 import { allowReadonlyNonLoopback } from './allow-readonly-non-loopback.js'
+import { unstableSerialDevicePath } from './unstable-serial-device-path.js'
+import { noRealtimeClock } from './no-realtime-clock.js'
 
 export const rules: readonly Rule[] = [
   serverVersionAdvisories,
-  allowReadonlyNonLoopback
+  allowReadonlyNonLoopback,
+  unstableSerialDevicePath,
+  noRealtimeClock
 ]
 
-export { serverVersionAdvisories, allowReadonlyNonLoopback }
+export {
+  serverVersionAdvisories,
+  allowReadonlyNonLoopback,
+  unstableSerialDevicePath,
+  noRealtimeClock
+}
