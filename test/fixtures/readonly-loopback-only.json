@@ -1,7 +1,9 @@
 {
   "schemaVersion": 1,
   "capturedAt": "2026-08-01T00:00:00.000Z",
-  "source": { "kind": "fixture" },
+  "source": {
+    "kind": "fixture"
+  },
   "server": {
     "version": "2.30.0",
     "settings": {
@@ -25,7 +27,12 @@
       "nodeVersion": "v22.11.0",
       "platform": "linux",
       "arch": "arm64",
-      "totalMemMB": 3958
+      "totalMemMB": 3958,
+      "disk": {
+        "totalMB": 29820,
+        "usedMB": 11203,
+        "usedPercent": 37.6
+      }
     }
   }
 }

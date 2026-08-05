@@ -55,6 +55,22 @@ describe('collect()', () => {
     expect(snapshot.server.settings).toBeNull()
     expect(snapshot.server.sourcePriorities).toBeNull()
     expect(snapshot.server.security?.configured).toBe(false)
+    // statfs() on a path that doesn't exist must degrade to null, not throw
+    // and take the whole collector down with it.
+    expect(snapshot.server.system.disk).toBeNull()
+  })
+
+  it('captures disk usage for the filesystem holding the config directory', async () => {
+    const dir = await configDirWith({ 'settings.json': { port: 3000 } })
+    const snapshot = await collect({ configDir: dir })
+    const disk = snapshot.server.system.disk
+
+    expect(disk).not.toBeNull()
+    expect(disk!.totalMB).toBeGreaterThan(0)
+    expect(disk!.usedMB).toBeGreaterThanOrEqual(0)
+    expect(disk!.usedMB).toBeLessThanOrEqual(disk!.totalMB)
+    expect(disk!.usedPercent).toBeGreaterThanOrEqual(0)
+    expect(disk!.usedPercent).toBeLessThanOrEqual(100)
   })
 
   it('distinguishes absent priorities from empty priorities', async () => {
@@ -74,7 +90,13 @@ describe('collect()', () => {
     const now = new Date('2026-08-01T00:00:00.000Z')
     const a = await collect({ configDir: dir, now })
     const b = await collect({ configDir: dir, now })
-    expect(a).toEqual(b)
+    // system.disk is a live statfs() read -- genuinely non-deterministic
+    // between two calls, however unlikely to actually differ in practice.
+    // Excluded here rather than asserted on luck.
+    const { system: systemA, ...serverA } = a.server
+    const { system: systemB, ...serverB } = b.server
+    expect(serverA).toEqual(serverB)
+    expect(systemA.nodeVersion).toBe(systemB.nodeVersion)
     expect(a.capturedAt).toBe('2026-08-01T00:00:00.000Z')
   })
 })

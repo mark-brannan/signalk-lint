@@ -8,11 +8,12 @@
  * `null`, not an exception. Half a snapshot is useful; a crash is not. Rules
  * are responsible for saying "I could not evaluate this" when they see a null.
  */
-import { readFile } from 'node:fs/promises'
+import { readFile, statfs } from 'node:fs/promises'
 import { join } from 'node:path'
 import { arch, platform, totalmem } from 'node:os'
 import {
   SNAPSHOT_SCHEMA_VERSION,
+  DiskInfo,
   SecurityFacts,
   ServerFacts,
   SystemInfo,
@@ -77,23 +78,47 @@ export interface CollectOptions {
   now?: Date
 }
 
-function systemInfo(): SystemInfo {
+/**
+ * Disk usage of the filesystem holding `configDir`, not the root filesystem.
+ * `statfs` reports blocks in units of `bsize`, which varies by filesystem --
+ * everything below is normalized to MB before it leaves this function.
+ */
+async function diskInfo(configDir: string): Promise<DiskInfo | null> {
+  try {
+    const stats = await statfs(configDir)
+    const blockToMB = stats.bsize / (1024 * 1024)
+    const totalMB = Math.round(stats.blocks * blockToMB)
+    const freeMB = Math.round(stats.bfree * blockToMB)
+    const usedMB = totalMB - freeMB
+    const usedPercent =
+      totalMB > 0 ? Math.round((usedMB / totalMB) * 1000) / 10 : 0
+    return { totalMB, usedMB, usedPercent }
+  } catch {
+    // Not every platform/filesystem supports statfs. Absence is a fact, not
+    // a failure -- same convention as every other collector in this file.
+    return null
+  }
+}
+
+async function systemInfo(configDir: string): Promise<SystemInfo> {
   const totalBytes = totalmem()
   return {
     nodeVersion: process.version,
     platform: platform(),
     arch: arch(),
-    totalMemMB: totalBytes ? Math.round(totalBytes / (1024 * 1024)) : null
+    totalMemMB: totalBytes ? Math.round(totalBytes / (1024 * 1024)) : null,
+    disk: await diskInfo(configDir)
   }
 }
 
 export async function collect(options: CollectOptions): Promise<Snapshot> {
   const { configDir, serverVersion = null, now = new Date() } = options
 
-  const [settings, security, sourcePriorities] = await Promise.all([
+  const [settings, security, sourcePriorities, system] = await Promise.all([
     readJson(join(configDir, 'settings.json')),
     readJson(join(configDir, 'security.json')),
-    readJson(join(configDir, 'priorities.json'))
+    readJson(join(configDir, 'priorities.json')),
+    systemInfo(configDir)
   ])
 
   const server: ServerFacts = {
@@ -101,7 +126,7 @@ export async function collect(options: CollectOptions): Promise<Snapshot> {
     settings,
     security: securityFactsFrom(security),
     sourcePriorities,
-    system: systemInfo()
+    system
   }
 
   return {

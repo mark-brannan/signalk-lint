@@ -268,7 +268,10 @@
         const headerMeta = document.getElementById('header-meta')
         const f = data.findings || []
 
-        // Display server and system info in header
+        // Display server and system info in header.
+        // Open item (PR #1): plugin version and key device config (/dev/*,
+        // can0, etc.) may belong here too -- deferred, revisit this block
+        // together rather than growing it field by field.
         if (data.snapshot) {
           const s = data.snapshot.server
           const sys = s.system
@@ -279,6 +282,8 @@
             meta += `<p>${esc(sys.platform)} ${esc(sys.arch)} · Node ${esc(sys.nodeVersion)}</p>`
             if (sys.totalMemMB)
               meta += `<p>${sys.totalMemMB} MB RAM</p>`
+            if (sys.disk)
+              meta += `<p>${sys.disk.usedMB} / ${sys.disk.totalMB} MB disk (${sys.disk.usedPercent}%)</p>`
           }
           if (meta) headerMeta.innerHTML = meta
         }

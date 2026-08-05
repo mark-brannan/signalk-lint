@@ -69,6 +69,20 @@ export interface SystemInfo {
   arch: string
   /** Total system memory in bytes, or null if unavailable */
   totalMemMB: number | null
+  /**
+   * Disk usage of the filesystem holding the config directory -- not the
+   * root filesystem. A boat Pi often has the SD card (config) and a data
+   * drive on different mounts, so statting the actual config path is what
+   * makes "am I about to fill the SD card" a meaningful question.
+   */
+  disk: DiskInfo | null
+}
+
+export interface DiskInfo {
+  totalMB: number
+  usedMB: number
+  /** 0-100, rounded to one decimal place. */
+  usedPercent: number
 }
 
 export interface ServerFacts {

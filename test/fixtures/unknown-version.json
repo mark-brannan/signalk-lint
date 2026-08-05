@@ -27,7 +27,12 @@
       "nodeVersion": "v22.11.0",
       "platform": "linux",
       "arch": "arm64",
-      "totalMemMB": 3958
+      "totalMemMB": 3958,
+      "disk": {
+        "totalMB": 29820,
+        "usedMB": 11203,
+        "usedPercent": 37.6
+      }
     }
   }
 }
