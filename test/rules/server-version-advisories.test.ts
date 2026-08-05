@@ -83,7 +83,11 @@ describe('server/known-vulnerability', () => {
 
 describe('lint()', () => {
   it('stamps rule id, provenance and schema version onto findings', () => {
-    const { findings } = lint(fixture('vulnerable-server'))
+    const { findings } = lint(fixture('vulnerable-server'), {
+      rules: {
+        'config/allow-readonly-non-loopback': 'off'
+      }
+    })
     for (const f of findings) {
       expect(f.ruleId).toBe('server/known-vulnerability')
       expect(f.provenance).toBe('advisory')
@@ -92,7 +96,11 @@ describe('lint()', () => {
   })
 
   it('sorts findings by descending severity', () => {
-    const { findings } = lint(fixture('vulnerable-server'))
+    const { findings } = lint(fixture('vulnerable-server'), {
+      rules: {
+        'config/allow-readonly-non-loopback': 'off'
+      }
+    })
     const rank = { off: 0, info: 1, warn: 2, error: 3 } as const
     for (let i = 1; i < findings.length; i++) {
       expect(rank[findings[i - 1]!.severity]).toBeGreaterThanOrEqual(
@@ -103,7 +111,10 @@ describe('lint()', () => {
 
   it('honours a rule being configured off', () => {
     const result = lint(fixture('vulnerable-server'), {
-      rules: { 'server/known-vulnerability': 'off' }
+      rules: {
+        'server/known-vulnerability': 'off',
+        'config/allow-readonly-non-loopback': 'off'
+      }
     })
     expect(result.findings).toEqual([])
     expect(result.skipped).toContain('server/known-vulnerability')
@@ -111,7 +122,10 @@ describe('lint()', () => {
 
   it('lets an explicit severity override the rule default', () => {
     const { findings } = lint(fixture('vulnerable-server'), {
-      rules: { 'server/known-vulnerability': 'info' }
+      rules: {
+        'server/known-vulnerability': 'info',
+        'config/allow-readonly-non-loopback': 'off'
+      }
     })
     expect(findings.every((f) => f.severity === 'info')).toBe(true)
   })

@@ -5,13 +5,13 @@
     "kind": "fixture"
   },
   "server": {
-    "version": "2.18.0",
+    "version": "2.30.0",
     "settings": {
       "port": 3000,
       "ssl": false,
       "mdns": true,
       "server": {
-        "listen": "0.0.0.0"
+        "listen": "127.0.0.1"
       }
     },
     "security": {

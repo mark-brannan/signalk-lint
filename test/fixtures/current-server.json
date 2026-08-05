@@ -9,7 +9,10 @@
     "settings": {
       "port": 3000,
       "ssl": false,
-      "mdns": true
+      "mdns": true,
+      "server": {
+        "listen": "127.0.0.1"
+      }
     },
     "security": {
       "configured": true,
@@ -23,6 +26,17 @@
       "navigation.position": [
         "gps-primary"
       ]
+    },
+    "system": {
+      "nodeVersion": "v22.11.0",
+      "platform": "linux",
+      "arch": "arm64",
+      "totalMemMB": 7896,
+      "disk": {
+        "totalMB": 29820,
+        "usedMB": 11203,
+        "usedPercent": 37.6
+      }
     }
   }
 }

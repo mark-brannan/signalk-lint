@@ -5,7 +5,7 @@
     "kind": "fixture"
   },
   "server": {
-    "version": "2.18.0",
+    "version": "2.30.0",
     "settings": {
       "port": 3000,
       "ssl": false,
@@ -16,7 +16,7 @@
     },
     "security": {
       "configured": true,
-      "allowReadonly": true,
+      "allowReadonly": false,
       "userCount": 1,
       "deviceCount": 0,
       "allowNewUserRegistration": false,

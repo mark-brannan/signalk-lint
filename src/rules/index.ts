@@ -8,7 +8,11 @@
  */
 import { Rule } from '../types.js'
 import { serverVersionAdvisories } from './server-version-advisories.js'
+import { allowReadonlyNonLoopback } from './allow-readonly-non-loopback.js'
 
-export const rules: readonly Rule[] = [serverVersionAdvisories]
+export const rules: readonly Rule[] = [
+  serverVersionAdvisories,
+  allowReadonlyNonLoopback
+]
 
-export { serverVersionAdvisories }
+export { serverVersionAdvisories, allowReadonlyNonLoopback }
