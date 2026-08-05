@@ -3,7 +3,7 @@
   "capturedAt": "2026-08-01T00:00:00.000Z",
   "source": { "kind": "fixture" },
   "server": {
-    "version": "2.18.0",
+    "version": "2.30.0",
     "settings": {
       "port": 3000,
       "ssl": false,

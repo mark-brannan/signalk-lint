@@ -10,10 +10,12 @@
  */
 import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
+import { arch, platform, totalmem } from 'node:os'
 import {
   SNAPSHOT_SCHEMA_VERSION,
   SecurityFacts,
   ServerFacts,
+  SystemInfo,
   Snapshot
 } from '../types.js'
 
@@ -75,6 +77,16 @@ export interface CollectOptions {
   now?: Date
 }
 
+function systemInfo(): SystemInfo {
+  const totalBytes = totalmem()
+  return {
+    nodeVersion: process.version,
+    platform: platform(),
+    arch: arch(),
+    totalMemMB: totalBytes ? Math.round(totalBytes / (1024 * 1024)) : null
+  }
+}
+
 export async function collect(options: CollectOptions): Promise<Snapshot> {
   const { configDir, serverVersion = null, now = new Date() } = options
 
@@ -88,7 +100,8 @@ export async function collect(options: CollectOptions): Promise<Snapshot> {
     version: serverVersion,
     settings,
     security: securityFactsFrom(security),
-    sourcePriorities
+    sourcePriorities,
+    system: systemInfo()
   }
 
   return {

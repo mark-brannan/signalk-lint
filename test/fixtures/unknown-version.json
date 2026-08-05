@@ -9,7 +9,10 @@
     "settings": {
       "port": 3000,
       "ssl": false,
-      "mdns": true
+      "mdns": true,
+      "server": {
+        "listen": "0.0.0.0"
+      }
     },
     "security": {
       "configured": true,
@@ -19,6 +22,12 @@
       "allowNewUserRegistration": false,
       "allowDeviceAccessRequests": true
     },
-    "sourcePriorities": {}
+    "sourcePriorities": {},
+    "system": {
+      "nodeVersion": "v22.11.0",
+      "platform": "linux",
+      "arch": "arm64",
+      "totalMemMB": 3958
+    }
   }
 }

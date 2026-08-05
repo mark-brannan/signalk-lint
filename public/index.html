@@ -50,7 +50,15 @@
       }
       h1 {
         font-size: 1.4rem;
-        margin: 0 0 0.25rem;
+        margin: 0 0 0.5rem;
+      }
+      .header-meta {
+        font-size: 0.85rem;
+        color: var(--muted);
+        margin-bottom: 1.5rem;
+      }
+      .header-meta p {
+        margin: 0.25rem 0;
       }
       .sub {
         color: var(--muted);
@@ -66,12 +74,32 @@
         border-bottom: 1px solid var(--line);
         margin-bottom: 1.5rem;
       }
+      .count {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
       .count b {
         font-size: 1.3rem;
-        display: block;
+        display: inline-block;
+        padding: 0.3rem 0.6rem;
+        border-radius: 3px;
+        background: var(--line);
+        color: var(--fg);
+      }
+      .count.error b {
+        background: var(--error);
+        color: white;
+      }
+      .count.warn b {
+        background: var(--warn);
+        color: white;
+      }
+      .count.info b {
+        background: var(--info);
+        color: white;
       }
       .count span {
-        color: var(--muted);
         font-size: 0.8rem;
         text-transform: uppercase;
         letter-spacing: 0.04em;
@@ -93,10 +121,37 @@
       .finding.info {
         border-left-color: var(--info);
       }
+      .finding.acked {
+        opacity: 0.45;
+      }
+      .finding-top {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 0.75rem;
+      }
       .finding h2 {
         font-size: 1rem;
         margin: 0 0 0.4rem;
         font-weight: 600;
+      }
+      .ack-btn {
+        flex-shrink: 0;
+        padding: 0.3rem 0.7rem;
+        font-size: 0.78rem;
+        border: 1px solid var(--line);
+        background: var(--bg);
+        color: var(--muted);
+        border-radius: 3px;
+        cursor: pointer;
+      }
+      .ack-btn:hover {
+        color: var(--fg);
+        border-color: var(--muted);
+      }
+      .finding.acked .ack-btn {
+        color: var(--ok);
+        border-color: var(--ok);
       }
       .meta {
         font-size: 0.78rem;
@@ -169,6 +224,7 @@
   <body>
     <main>
       <h1>Lint</h1>
+      <div class="header-meta" id="header-meta"></div>
       <div class="sub" id="sub">Loading…</div>
       <div id="out"></div>
 
@@ -209,7 +265,23 @@
       function render(data) {
         const out = document.getElementById('out')
         const sub = document.getElementById('sub')
+        const headerMeta = document.getElementById('header-meta')
         const f = data.findings || []
+
+        // Display server and system info in header
+        if (data.snapshot) {
+          const s = data.snapshot.server
+          const sys = s.system
+          let meta = ''
+          if (s.version)
+            meta += `<p>SignalK ${esc(s.version)}</p>`
+          if (sys) {
+            meta += `<p>${esc(sys.platform)} ${esc(sys.arch)} · Node ${esc(sys.nodeVersion)}</p>`
+            if (sys.totalMemMB)
+              meta += `<p>${sys.totalMemMB} MB RAM</p>`
+          }
+          if (meta) headerMeta.innerHTML = meta
+        }
 
         const n = (s) => f.filter((x) => x.severity === s).length
         sub.textContent = f.length
@@ -224,14 +296,18 @@
 
         let html = '<div class="counts">'
         for (const s of SEV) {
-          if (n(s))
-            html += `<div class="count"><b style="color:var(--${s})">${n(s)}</b><span>${s}</span></div>`
+          const count = n(s)
+          if (count)
+            html += `<div class="count ${s}"><b>${count}</b><span>${s}</span></div>`
         }
         html += '</div>'
 
-        for (const x of f) {
-          html += `<div class="finding ${esc(x.severity)}">`
+        f.forEach((x, i) => {
+          html += `<div class="finding ${esc(x.severity)}" id="finding-${i}">`
+          html += '<div class="finding-top">'
           html += `<h2>${esc(x.title)}</h2>`
+          html += `<button class="ack-btn" onclick="toggleAck(${i})" id="ack-btn-${i}">Ack</button>`
+          html += '</div>'
           html += `<div class="meta">${esc(x.ruleId)} · ${esc(x.provenance)}</div>`
           html += `<p class="detail">${esc(x.detail)}</p>`
           if (x.remediation)
@@ -239,20 +315,35 @@
           if (x.references && x.references.length)
             html += `<div class="refs">${x.references.map((r) => `<a href="${esc(r)}" target="_blank" rel="noopener">${esc(r)}</a>`).join('<br>')}</div>`
           html += '</div>'
-        }
+        })
         out.innerHTML = html
       }
 
-      fetch('/plugins/signalk-lint/findings')
-        .then((r) => {
+      // No persistence: a page reload brings every finding back. This is
+      // deliberate for now -- what "acknowledged" should mean (deferred vs.
+      // dismissed vs. fixed) isn't decided yet, so nothing is stored.
+      function toggleAck(i) {
+        const el = document.getElementById(`finding-${i}`)
+        const btn = document.getElementById(`ack-btn-${i}`)
+        const acked = el.classList.toggle('acked')
+        btn.textContent = acked ? 'Acked' : 'Ack'
+      }
+
+      Promise.all([
+        fetch('/plugins/signalk-lint/findings').then((r) => {
           if (r.status === 503)
             throw new Error(
               'The plugin has not finished its first run yet. Reload in a moment.'
             )
           if (!r.ok) throw new Error(`Server returned ${r.status}`)
           return r.json()
-        })
-        .then(render)
+        }),
+        fetch('/plugins/signalk-lint/snapshot').then((r) => {
+          if (!r.ok) return null
+          return r.json()
+        }).catch(() => null)
+      ])
+        .then(([findings, snapshot]) => render({ ...findings, snapshot }))
         .catch((e) => {
           document.getElementById('sub').textContent = ''
           document.getElementById('out').innerHTML =

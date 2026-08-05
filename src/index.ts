@@ -38,6 +38,29 @@ interface ServerInternals {
   config?: { version?: string }
 }
 
+/**
+ * OPEN ITEM -- scheduling is naive and known to be provisional.
+ *
+ * Today: `start()` runs immediately, then every `intervalMinutes` on a plain
+ * `setInterval` that resets on every plugin start/server restart. That's
+ * correct for the current rule set: both shipped rules read static config
+ * files, complete at t=0, with no dependency on other plugins or devices.
+ *
+ * This stops being sufficient the moment a `requiresLiveData` rule ships
+ * (source ambiguity, stale paths -- see README roadmap). Two problems, not
+ * one:
+ *   1. A live-data rule run moments after boot will false-positive on paths
+ *      that haven't arrived yet, not paths that are actually broken.
+ *   2. A finding from a live-data rule can flap: present at boot, gone ten
+ *      minutes later once the NMEA bus catches up, back again if a sensor
+ *      drops mid-voyage. A single run's result taken at face value conflates
+ *      "still warming up" with "actually resolved" -- the fix likely isn't a
+ *      delay at all, but requiring a finding to persist across N consecutive
+ *      runs before either raising or clearing it.
+ * Revisit scheduling (and whether "one snapshot per run" is even the right
+ * model for live-data rules) when rule 3 or 4 gets built. Do not solve this
+ * speculatively before then.
+ */
 export default function (app: ServerAPI): Plugin {
   let timer: NodeJS.Timeout | undefined
   let latest: LintResult | undefined

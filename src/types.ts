@@ -60,6 +60,17 @@ export interface Snapshot {
   server: ServerFacts
 }
 
+export interface SystemInfo {
+  /** Node.js version, e.g. "v22.11.0" */
+  nodeVersion: string
+  /** Operating system, e.g. "linux" */
+  platform: string
+  /** CPU architecture, e.g. "arm64" */
+  arch: string
+  /** Total system memory in bytes, or null if unavailable */
+  totalMemMB: number | null
+}
+
 export interface ServerFacts {
   /**
    * Installed signalk-server version, or null when it could not be determined.
@@ -76,6 +87,8 @@ export interface ServerFacts {
    * source priorities are configured -- which is different from null (absent).
    */
   sourcePriorities: Record<string, unknown> | null
+  /** System info (Node version, OS, arch). */
+  system: SystemInfo
 }
 
 /**
@@ -164,6 +177,19 @@ export interface Rule {
   description: string
   defaultSeverity: Severity
   provenance: Provenance
+  /**
+   * True for rules that reason about the live data model (which paths are
+   * actually reporting) rather than static config files.
+   *
+   * Unset/false today for every shipped rule -- config files are complete the
+   * instant the server starts, so there's nothing to wait for. This exists so
+   * a future scheduler has something to key off of: a live-data rule run
+   * moments after boot will false-positive on paths that just haven't arrived
+   * yet, and a naive fix (delay every rule by N minutes) is the wrong shape --
+   * it penalizes config rules that were already correct at t=0. See
+   * src/index.ts for the open scheduling question this doesn't yet answer.
+   */
+  requiresLiveData?: boolean
   /**
    * Pure function. No I/O, no clock, no randomness, no network.
    *
