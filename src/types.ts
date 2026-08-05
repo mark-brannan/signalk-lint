@@ -115,6 +115,17 @@ export interface ServerFacts {
   sourcePriorities: Record<string, unknown> | null
   /** System info (Node version, OS, arch). */
   system: SystemInfo
+  /**
+   * Every plugin's saved config, keyed by plugin id (the JSON filename under
+   * plugin-config-data/, e.g. "venus", "signalk-datetime" -- not always the
+   * same as the npm package name; verify per plugin, don't assume). null
+   * when the directory itself is absent.
+   *
+   * Read generically here so plugin-specific knowledge stays in rules, not
+   * in the collector -- matching how sourcePriorities works. A rule that
+   * knows a particular plugin's config shape reaches into this by id.
+   */
+  pluginConfig: Record<string, unknown> | null
 }
 
 /**
