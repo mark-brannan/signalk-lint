@@ -262,6 +262,16 @@
         )
       }
 
+      // Snapshot fields carry MB as their unit for precision, but a 1 TB
+      // disk showing as "1031018 MB" is not a serious way to display a
+      // number to a human. Scale for display; keep the raw field for the
+      // rules layer, which never needs to look "nice."
+      function formatMB(mb) {
+        if (mb >= 1024 * 1024) return `${(mb / (1024 * 1024)).toFixed(1)} TB`
+        if (mb >= 1024) return `${(mb / 1024).toFixed(1)} GB`
+        return `${mb} MB`
+      }
+
       function render(data) {
         const out = document.getElementById('out')
         const sub = document.getElementById('sub')
@@ -281,9 +291,9 @@
           if (sys) {
             meta += `<p>${esc(sys.platform)} ${esc(sys.arch)} · Node ${esc(sys.nodeVersion)}</p>`
             if (sys.totalMemMB)
-              meta += `<p>${sys.totalMemMB} MB RAM</p>`
+              meta += `<p>${formatMB(sys.totalMemMB)} RAM</p>`
             if (sys.disk)
-              meta += `<p>${sys.disk.usedMB} / ${sys.disk.totalMB} MB disk (${sys.disk.usedPercent}%)</p>`
+              meta += `<p>${formatMB(sys.disk.usedMB)} / ${formatMB(sys.disk.totalMB)} disk (${sys.disk.usedPercent}%)</p>`
           }
           if (meta) headerMeta.innerHTML = meta
         }
