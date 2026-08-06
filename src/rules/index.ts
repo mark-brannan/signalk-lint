@@ -12,15 +12,13 @@ import { allowReadonlyNonLoopback } from './allow-readonly-non-loopback.js'
 import { unstableSerialDevicePath } from './unstable-serial-device-path.js'
 import { noRealtimeClock } from './no-realtime-clock.js'
 import { venusRawDeviceInstance } from './venus-raw-device-instance.js'
-import { datetimeNonstandardPath } from './datetime-nonstandard-path.js'
 
 export const rules: readonly Rule[] = [
   serverVersionAdvisories,
   allowReadonlyNonLoopback,
   unstableSerialDevicePath,
   noRealtimeClock,
-  venusRawDeviceInstance,
-  datetimeNonstandardPath
+  venusRawDeviceInstance
 ]
 
 export {
@@ -28,6 +26,5 @@ export {
   allowReadonlyNonLoopback,
   unstableSerialDevicePath,
   noRealtimeClock,
-  venusRawDeviceInstance,
-  datetimeNonstandardPath
+  venusRawDeviceInstance
 }
