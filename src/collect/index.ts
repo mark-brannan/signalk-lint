@@ -8,7 +8,7 @@
  * `null`, not an exception. Half a snapshot is useful; a crash is not. Rules
  * are responsible for saying "I could not evaluate this" when they see a null.
  */
-import { readFile, statfs } from 'node:fs/promises'
+import { access, readdir, readFile, statfs } from 'node:fs/promises'
 import { join } from 'node:path'
 import { arch, platform, totalmem } from 'node:os'
 import {
@@ -100,33 +100,85 @@ async function diskInfo(configDir: string): Promise<DiskInfo | null> {
   }
 }
 
+/**
+ * Whether /dev/rtc0 exists. Only meaningful on Linux -- there's no equivalent
+ * convention on macOS/Windows, and checking there would misreport "no RTC" on
+ * a dev machine that was never a candidate for one.
+ */
+async function hasRTC(platformName: string): Promise<boolean | null> {
+  if (platformName !== 'linux') return null
+  try {
+    await access('/dev/rtc0')
+    return true
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Reads every plugin-config-data/*.json file into a map keyed by plugin id
+ * (the filename, minus extension). Directory name verified against
+ * signalk-server's own plugin-paths.js (PLUGIN_CONFIG_DATA_DIR), not
+ * guessed -- but it's still an internal convention, not a documented public
+ * API, so absence is treated the same as every other optional fact here:
+ * null, not a thrown error.
+ */
+async function pluginConfig(
+  configDir: string
+): Promise<Record<string, unknown> | null> {
+  const dir = join(configDir, 'plugin-config-data')
+  let entries: string[]
+  try {
+    entries = await readdir(dir)
+  } catch {
+    return null
+  }
+
+  const result: Record<string, unknown> = {}
+  await Promise.all(
+    entries
+      .filter((name) => name.endsWith('.json'))
+      .map(async (name) => {
+        const id = name.slice(0, -'.json'.length)
+        const parsed = await readJson(join(dir, name))
+        if (parsed !== null) result[id] = parsed
+      })
+  )
+  return result
+}
+
 async function systemInfo(configDir: string): Promise<SystemInfo> {
   const totalBytes = totalmem()
+  const platformName = platform()
   return {
     nodeVersion: process.version,
-    platform: platform(),
+    platform: platformName,
     arch: arch(),
     totalMemMB: totalBytes ? Math.round(totalBytes / (1024 * 1024)) : null,
-    disk: await diskInfo(configDir)
+    disk: await diskInfo(configDir),
+    hasRTC: await hasRTC(platformName)
   }
 }
 
 export async function collect(options: CollectOptions): Promise<Snapshot> {
   const { configDir, serverVersion = null, now = new Date() } = options
 
-  const [settings, security, sourcePriorities, system] = await Promise.all([
-    readJson(join(configDir, 'settings.json')),
-    readJson(join(configDir, 'security.json')),
-    readJson(join(configDir, 'priorities.json')),
-    systemInfo(configDir)
-  ])
+  const [settings, security, sourcePriorities, system, plugins] =
+    await Promise.all([
+      readJson(join(configDir, 'settings.json')),
+      readJson(join(configDir, 'security.json')),
+      readJson(join(configDir, 'priorities.json')),
+      systemInfo(configDir),
+      pluginConfig(configDir)
+    ])
 
   const server: ServerFacts = {
     version: serverVersion,
     settings,
     security: securityFactsFrom(security),
     sourcePriorities,
-    system
+    system,
+    pluginConfig: plugins
   }
 
   return {

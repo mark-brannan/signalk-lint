@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { mkdtemp, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { collect } from '../src/collect/index.js'
@@ -8,6 +8,18 @@ async function configDirWith(files: Record<string, unknown>): Promise<string> {
   const dir = await mkdtemp(join(tmpdir(), 'sk-lint-'))
   for (const [name, contents] of Object.entries(files)) {
     await writeFile(join(dir, name), JSON.stringify(contents))
+  }
+  return dir
+}
+
+async function configDirWithPlugins(
+  plugins: Record<string, unknown>
+): Promise<string> {
+  const dir = await mkdtemp(join(tmpdir(), 'sk-lint-'))
+  const pluginDir = join(dir, 'plugin-config-data')
+  await mkdir(pluginDir)
+  for (const [id, contents] of Object.entries(plugins)) {
+    await writeFile(join(pluginDir, `${id}.json`), JSON.stringify(contents))
   }
   return dir
 }
@@ -71,6 +83,22 @@ describe('collect()', () => {
     expect(disk!.usedMB).toBeLessThanOrEqual(disk!.totalMB)
     expect(disk!.usedPercent).toBeGreaterThanOrEqual(0)
     expect(disk!.usedPercent).toBeLessThanOrEqual(100)
+  })
+
+  it('reads plugin configs, keyed by plugin id', async () => {
+    const dir = await configDirWithPlugins({
+      venus: { enabled: true, configuration: { useDeviceNames: false } }
+    })
+    const snapshot = await collect({ configDir: dir })
+    expect(snapshot.server.pluginConfig).toEqual({
+      venus: { enabled: true, configuration: { useDeviceNames: false } }
+    })
+  })
+
+  it('yields null pluginConfig when plugin-config-data is absent', async () => {
+    const dir = await configDirWith({})
+    const snapshot = await collect({ configDir: dir })
+    expect(snapshot.server.pluginConfig).toBeNull()
   })
 
   it('distinguishes absent priorities from empty priorities', async () => {

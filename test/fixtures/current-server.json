@@ -36,7 +36,9 @@
         "totalMB": 29820,
         "usedMB": 11203,
         "usedPercent": 37.6
-      }
-    }
+      },
+      "hasRTC": true
+    },
+    "pluginConfig": null
   }
 }
