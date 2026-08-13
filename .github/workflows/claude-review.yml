@@ -1,0 +1,81 @@
+name: Claude PR Review
+
+# An independent reviewer for every PR: a fresh Claude with no shared
+# context with whichever session wrote the code.
+#
+# Auth: needs the CLAUDE_CODE_OAUTH_TOKEN secret (mint one with
+# `claude setup-token`, then `gh secret set CLAUDE_CODE_OAUTH_TOKEN`).
+# Swap to `anthropic_api_key` for metered API billing instead.
+
+on:
+  pull_request:
+    types: [opened, synchronize, ready_for_review]
+
+concurrency:
+  group: claude-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  review:
+    # Skip drafts, and skip fork PRs -- forks can't read the secret, so a
+    # run there only produces a red X that means nothing.
+    if: >-
+      !github.event.pull_request.draft &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      pull-requests: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          # 22 is the floor declared in engines; review against the floor.
+          node-version: 22
+          cache: npm
+
+      - uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          track_progress: true
+          prompt: |
+            REPO: ${{ github.repository }}
+            PR NUMBER: ${{ github.event.pull_request.number }}
+
+            You are the independent reviewer for this repository. The PR was
+            most likely written by another Claude session; your job is to
+            challenge it, not to extend it courtesy. You share no context
+            with the author -- everything you assert must come from the
+            repo, the diff, or something you ran yourself.
+
+            Read the README first: this is a lint tool for Signal K server
+            installations, and a rule that silently stops firing is its
+            worst failure mode. CI already proves the CLI still flags
+            test/fixtures/vulnerable-server.json and stays quiet on
+            test/fixtures/current-server.json -- reviewers reproduce that,
+            not assume it. Run `npm ci`, `npm run format:check`,
+            `npm run build`, `npm test`, and the same CLI smoke check CI
+            runs, and compare against what the PR description claims. If a
+            claim doesn't match what you observe, say so bluntly.
+
+            Be extra suspicious of: a deleted, loosened, or skipped test; a
+            rule whose matching logic got narrower without a fixture
+            proving it still fires; advisory data edited by hand rather
+            than via scripts/update-advisories.mjs; and any change the
+            description doesn't motivate. One logical change per PR. Ask
+            the question that forces a justification, not just a fix.
+
+            Post findings as inline comments via
+            mcp__github_inline_comment__create_inline_comment (with
+            `confirmed: true`) anchored to the lines they concern, and one
+            top-level summary via `gh pr comment`. In the summary, list
+            what you checked and what you ran, even when everything passed.
+            Do not push commits or edit code; you review, the author fixes.
+
+          claude_args: |
+            --allowedTools "mcp__github_inline_comment__create_inline_comment,Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Bash(npm ci),Bash(npm run build),Bash(npm test),Bash(npm run format:check),Bash(node dist/cli.js:*)"
