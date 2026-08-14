@@ -40,7 +40,23 @@ export function assertConfigDir(configDir: string): void {
   let isDirectory: boolean
   try {
     isDirectory = statSync(configDir).isDirectory()
-  } catch {
+  } catch (error) {
+    const code = (error as NodeJS.ErrnoException).code
+    // ENOTDIR means a path component is a file -- ~/.signalk/settings.json
+    // passed where ~/.signalk was meant. That is the same mistake as pointing
+    // at a file directly, so it gets the same answer.
+    if (code === 'ENOTDIR') {
+      throw new ConfigDirError(
+        'not-a-directory',
+        `Not a directory: ${configDir}`
+      )
+    }
+    if (code !== 'ENOENT') {
+      // A permission error is not a missing directory, and saying "not found"
+      // would send someone looking for the wrong problem. Let it through with
+      // its own message; the CLI still exits 2 either way.
+      throw error
+    }
     throw new ConfigDirError(
       'missing',
       `Config directory not found: ${configDir}\n` +

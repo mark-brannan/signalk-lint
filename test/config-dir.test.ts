@@ -40,4 +40,14 @@ describe('assertConfigDir()', () => {
     // likely typo, and it degrades exactly the same way.
     expect(rejectionCode(file)).toBe('not-a-directory')
   })
+
+  it('rejects a path below a file as not-a-directory, not missing', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'sk-lint-'))
+    const file = join(dir, 'settings.json')
+    await writeFile(file, '{}')
+    // statSync raises ENOTDIR, not ENOENT, when a parent component is a file.
+    // Reporting "not found" here would send someone hunting for a directory
+    // that is not the problem.
+    expect(rejectionCode(join(file, 'child'))).toBe('not-a-directory')
+  })
 })

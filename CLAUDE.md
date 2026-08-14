@@ -75,14 +75,31 @@ them contain judgement.
 
 ## Non-obvious constraints
 
-**A snapshot must stay safe to paste into a bug report.** People will paste
-them into bug reports. `securityFactsFrom` in `collect/index.ts` reduces
+**A snapshot is meant to be safe to paste into a bug report, and
+`pluginConfig` currently breaks that.** People will paste them into bug reports,
+so this is the design's most load-bearing promise.
+
+Where it holds: `securityFactsFrom` in `collect/index.ts` reduces
 `security.json` to counts and booleans and deliberately does not carry
 `secretKey`, user password hashes or device tokens across; `SecurityFacts` in
 `types.ts` says so and means it. `collect.test.ts` pins it by serializing a
-snapshot and asserting the secrets are absent. This is a hard limit on what a
-rule can ever check — a rule that needs a credential to reason is a rule that
-does not get written. Rules do not need the secrets to reason about posture.
+snapshot and asserting the secrets are absent.
+
+Where it does not: `pluginConfig` copies every `plugin-config-data/*.json`
+**verbatim**, and plugin configs routinely hold MQTT passwords, broker
+credentials and API tokens. A snapshot from a real boat can therefore contain
+secrets, and `--save-snapshot` output and the `/snapshot` route carry them.
+Reducing the security file to facts while copying plugin files whole is a gap in
+one promise, not two separate decisions. **Until it is closed: treat a snapshot
+off a real installation as credential-bearing, and do not tell users it is safe
+to share.** The fix is redaction in the collector, where the existing
+`securityFactsFrom` boundary already lives.
+
+The promise still constrains rules the same way regardless: a rule that needs a
+credential to reason is a rule that does not get written. Rules do not need the
+secrets to reason about posture — `plugin/venus-raw-device-instance` reads
+`useDeviceNames` and `instanceMappings`, never a password, which is why
+redaction can land without changing what any rule can see.
 
 **Every finding carries `Evidence`: a dotted path into the snapshot and the
 value observed there.** Evidence is what separates a linter from a horoscope —
@@ -216,8 +233,10 @@ runs it. Comments explain *why*, not what.
 npm ci && npm run format:check && npm run build && npm test
 ```
 
-That is the whole CI gate, in CI's order — run it before pushing and a red build
-is a surprise rather than the norm. Fast and fully offline: 50 tests in well
+That is every CI check that can fail on your code, in CI's order — run it before
+pushing and a red build is a surprise rather than the norm. CI then adds one
+step this does not: an end-to-end smoke test of the built CLI, covered below.
+Fast and fully offline: 50 tests in well
 under a second, and nothing here needs a running Signal K server, a network, or
 a boat.
 
@@ -258,9 +277,10 @@ To capture a snapshot from a real installation for later analysis:
 node dist/cli.js --config-dir ~/.signalk --save-snapshot snap.json
 ```
 
-`snapshot*.json` is gitignored. Snapshots carry no secrets by construction, but
-they do carry a boat's configuration — treat one from someone else's vessel as
-theirs.
+`snapshot*.json` is gitignored. A snapshot carries a boat's configuration —
+treat one from someone else's vessel as theirs — and until the `pluginConfig`
+gap above is closed it can also carry plugin credentials, so check before
+sharing one rather than assuming it is safe.
 
 ## Releasing
 
