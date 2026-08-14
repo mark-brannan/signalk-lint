@@ -35,7 +35,13 @@ Options:
   --list-rules             List all rules and exit
   --help                   Show this message
 
-Exit codes: 0 = no errors, 1 = at least one error-severity finding.
+Exit codes:
+  0  no error-severity findings
+  1  at least one error-severity finding
+  2  the check could not run (bad arguments, missing config directory)
+
+1 and 2 are deliberately distinct: 1 is a verdict, 2 is the absence of one.
+Anything scripting this tool should treat 2 as "no answer", not as "clean".
 `
 
 interface Args {
