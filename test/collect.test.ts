@@ -189,6 +189,54 @@ describe('plugin config redaction', () => {
     ])
   })
 
+  it('leaves marine and generic config alone', async () => {
+    // The opposite failure to a missed secret, and the more likely one on a
+    // boat: substring matching would redact compass (heading calibration) and
+    // pinMode (a GPIO), destroying structure in the artifact whose whole
+    // purpose is letting someone else debug the config.
+    const snapshot = await snapshotWithPluginConfig({
+      'x.json': {
+        configuration: {
+          compass: { offset: 12, calibrated: true },
+          bypass: true,
+          sessionTimeout: 30,
+          pinMode: 'input',
+          gpioPin: 17,
+          keyName: 'heading'
+        }
+      }
+    })
+    const config = (
+      snapshot.server.pluginConfig?.x as {
+        configuration: Record<string, unknown>
+      }
+    ).configuration
+
+    expect(config.compass).toEqual({ offset: 12, calibrated: true })
+    expect(config.bypass).toBe(true)
+    expect(config.sessionTimeout).toBe(30)
+    expect(config.pinMode).toBe('input')
+    expect(config.gpioPin).toBe(17)
+    // keyName is accepted collateral: `key` is a credential word on its own.
+    expect(config.keyName).not.toBe('heading')
+  })
+
+  it('redacts a session identifier but not a session timeout', async () => {
+    const snapshot = await snapshotWithPluginConfig({
+      'x.json': {
+        configuration: { sessionId: 'SECRET-SID', sessionTimeout: 30 }
+      }
+    })
+    const config = (
+      snapshot.server.pluginConfig?.x as {
+        configuration: Record<string, unknown>
+      }
+    ).configuration
+
+    expect(config.sessionId).not.toBe('SECRET-SID')
+    expect(config.sessionTimeout).toBe(30)
+  })
+
   it('keeps the key so a rule can still tell a secret is set', async () => {
     // "MQTT configured with no TLS" is a finding someone will want, and it
     // must not need the password itself to reason.

@@ -42,6 +42,10 @@ function normalize(
 ): Snapshot {
   return {
     ...raw,
+    // What comes out of here is current-shaped whatever went in, so it says so.
+    // `--snapshot old.json --save-snapshot new.json` otherwise writes a file
+    // claiming a version whose shape it no longer has.
+    schemaVersion: SNAPSHOT_SCHEMA_VERSION,
     server: {
       ...server,
       pluginConfig: server.pluginConfig ?? null,

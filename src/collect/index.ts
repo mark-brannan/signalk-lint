@@ -36,20 +36,80 @@ async function readJson(path: string): Promise<Record<string, unknown> | null> {
  * reduces the blast radius rather than eliminating it, and the docs say that
  * plainly instead of implying a guarantee.
  *
- * Erring wide is deliberate: over-redacting costs a rule author one round trip
- * to add an exception, while under-redacting puts a live credential in a file
- * someone pastes into a bug report. `key` therefore matches anywhere in a name --
- * catching `sharedKey`, `accessKey` and `accessKeyId` at the price of also
- * hitting an innocent `keyName`. `hash` and `salt` are here because a stored hash is still a
- * credential-equivalent, and `cert`/`pem` because a private half is routinely
- * pasted into the same field as the public one.
+ * Wide within a word, strict about word boundaries. Under-redacting puts a live
+ * credential in a file someone pastes into a bug report, so `key` matches as a
+ * whole word anywhere in a name -- `sharedKey`, `accessKey`, `accessKeyId` --
+ * and `hash` and `salt` are here because a stored hash is credential-equivalent,
+ * `cert`/`pem` because the private half routinely lands in the same field as
+ * the public one.
  *
  * The alternative -- keeping only keys some rule names -- was rejected: it
  * would make the collector carry plugin-specific knowledge that deliberately
  * lives in rules, and every new rule would need a collector change.
  */
-const SECRET_KEY_PATTERN =
-  /pass(word|wd|phrase)?$|secret|token|credential|^auth(oriz(ation|ed))?$|bearer|jwt|api_?key|key|privatekey|private_?key|session|cookie|signature|sign(ing)?_?key|^pin$|salt|hash|^cert|certificate|^pem$|psk/i
+const SECRET_WORDS = new Set([
+  'password',
+  'passwd',
+  'passphrase',
+  'secret',
+  'token',
+  'credential',
+  'credentials',
+  'auth',
+  'authorization',
+  'bearer',
+  'jwt',
+  'apikey',
+  'key',
+  'keys',
+  'cookie',
+  'signature',
+  'signing',
+  'salt',
+  'hash',
+  'cert',
+  'certificate',
+  'pem',
+  'psk'
+])
+
+/**
+ * Words that name a credential only in company.
+ *
+ * `session` alone is usually `sessionTimeout` -- a number, and useful in a bug
+ * report. `sessionId` and `sessionToken` are the credential.
+ */
+const QUALIFIED_WORDS = new Set(['session'])
+const QUALIFIERS = new Set(['id', 'key', 'token', 'secret'])
+
+/**
+ * Split a config key into its words: camelCase, snake_case and kebab-case all
+ * arrive here, and only whole words are compared.
+ *
+ * Substring matching is what makes a denylist destructive on a boat.
+ * `pass` inside `compass`, and `pin` inside `pinMode` or `gpioPin`, are the
+ * two that would bite hardest here -- a heading calibration block and a GPIO
+ * assignment, both replaced by a string, in the one artifact whose purpose is
+ * letting somebody else debug the boat. `pin` is absent from the lists above
+ * for that reason: on a Signal K install it names a GPIO far more often than a
+ * passcode.
+ */
+function wordsIn(key: string): string[] {
+  return key
+    .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+    .split(/[^A-Za-z0-9]+/)
+    .filter(Boolean)
+    .map((word) => word.toLowerCase())
+}
+
+function namesCredential(key: string): boolean {
+  const words = wordsIn(key)
+  if (words.some((word) => SECRET_WORDS.has(word))) return true
+  return (
+    words.some((word) => QUALIFIED_WORDS.has(word)) &&
+    words.some((word) => QUALIFIERS.has(word))
+  )
+}
 
 export const REDACTED = '[redacted]'
 
@@ -63,7 +123,7 @@ function redactSecrets(value: unknown): unknown {
   if (value === null || typeof value !== 'object') return value
   const out: Record<string, unknown> = {}
   for (const [key, inner] of Object.entries(value as Record<string, unknown>)) {
-    out[key] = SECRET_KEY_PATTERN.test(key) ? REDACTED : redactSecrets(inner)
+    out[key] = namesCredential(key) ? REDACTED : redactSecrets(inner)
   }
   return out
 }

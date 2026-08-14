@@ -32,6 +32,8 @@ describe('parseSnapshot()', () => {
 
     expect(snapshot.server.pluginConfig).toBeNull()
     expect(snapshot.server.system.hasRTC).toBeNull()
+    // Resaving must not claim a version whose shape it no longer has.
+    expect(snapshot.schemaVersion).toBe(SNAPSHOT_SCHEMA_VERSION)
     expect(() => lint(snapshot, {}, rules)).not.toThrow()
   })
 
