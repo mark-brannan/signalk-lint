@@ -15,6 +15,7 @@ import { readFile, writeFile } from 'node:fs/promises'
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { homedir } from 'node:os'
+import { assertConfigDir } from './config-dir.js'
 import { collect } from './collect/index.js'
 import { hasErrors, lint } from './lint.js'
 import { rules } from './rules/index.js'
@@ -188,6 +189,7 @@ async function main(): Promise<number> {
   if (args.snapshot) {
     snapshot = JSON.parse(await readFile(args.snapshot, 'utf8')) as Snapshot
   } else {
+    assertConfigDir(args.configDir)
     const serverVersion =
       args.serverVersion ?? (await discoverServerVersion(args.configDir))
     snapshot = await collect({ configDir: args.configDir, serverVersion })

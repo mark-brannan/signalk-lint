@@ -41,3 +41,10 @@ jobs:
             echo "Expected a non-zero exit for a vulnerable snapshot"
             exit 1
           fi
+          # A config directory that isn't there must fail, not report nothing
+          # and exit 0. Checked here as well as in the unit test because it is
+          # the CLI's exit code that people and scripts actually rely on.
+          if node dist/cli.js --config-dir /nonexistent/path/xyz; then
+            echo "Expected a non-zero exit for a missing config directory"
+            exit 1
+          fi

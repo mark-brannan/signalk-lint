@@ -168,7 +168,7 @@ runs it. Comments explain *why*, not what.
 npm ci && npm run build && npm test
 ```
 
-Fast and fully offline — 27 tests in well under a second. Nothing here needs a
+Fast and fully offline — 30 tests in well under a second. Nothing here needs a
 running Signal K server, a network, or a boat.
 
 There is no ESLint in this repo. "Lint the code" means `npm run format:check`
@@ -184,11 +184,11 @@ Four things that are easy to get wrong:
   `public/index.html` is neither formatted nor checked; match the surrounding
   style by hand.
 - **`npm run lint:local` is not a code linter.** It builds and runs the CLI
-  against a real Signal K config directory (`$HOME/symphony/signalk`). If that
-  directory does not exist, the collector degrades to nulls rather than failing,
-  so the run prints one "could not determine the version" warning and **exits
-  0** — a clean `lint:local` is not evidence that it found a config directory.
-  Pass `--config-dir` explicitly when the target matters.
+  against a real Signal K config directory (`$HOME/symphony/signalk`), so it only
+  means anything on a machine that has one. It fails loudly if that path is
+  missing — `assertConfigDir` in `src/config-dir.ts` validates the directory
+  before anything reads it, because the collector's forgiving nulls would
+  otherwise turn a wrong path into a clean run that exits 0.
 - **The fastest way to exercise a change end to end is a fixture, not a
   server:** `node dist/cli.js --snapshot test/fixtures/vulnerable-server.json`.
   CI does exactly this as a smoke test, asserting a non-zero exit, to catch the
