@@ -30,7 +30,7 @@
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "format:check": "prettier --check \"src/**/*.ts\" \"test/**/*.ts\"",
     "update-advisories": "node scripts/update-advisories.mjs",
-    "lint:local": "npm run build && node dist/cli.js --config-dir \"$HOME/symphony/signalk\"",
+    "lint:local": "npm run build && node dist/cli.js --config-dir \"${SIGNALK_NODE_CONFIG_DIR:-$HOME/.signalk}\"",
     "prepublishOnly": "npm run build"
   },
   "repository": {

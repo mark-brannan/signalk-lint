@@ -41,3 +41,15 @@ jobs:
             echo "Expected a non-zero exit for a vulnerable snapshot"
             exit 1
           fi
+          # A config directory that isn't there must fail, not report nothing
+          # and exit 0. Checked here as well as in the unit test because it is
+          # the CLI's exit code that people and scripts actually rely on.
+          #
+          # Pinned to exactly 2, not merely non-zero: 1 means "there is a
+          # verdict and it is bad", 2 means "there is no verdict". A missing
+          # config directory landing on 1 would report findings nobody made.
+          node dist/cli.js --config-dir /nonexistent/path/xyz && status=0 || status=$?
+          if [ "$status" -ne 2 ]; then
+            echo "Expected exit 2 for a missing config directory, got $status"
+            exit 1
+          fi

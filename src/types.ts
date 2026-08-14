@@ -4,7 +4,7 @@
  * The pipeline is deliberately shaped like a linter:
  *
  *     collect(...)            -> Snapshot     // the only code that performs I/O
- *     lint(snapshot, config)  -> Finding[]    // pure, offline, testable
+ *     lint(snapshot, config)  -> LintResult   // pure, offline, testable
  *
  * Rules never touch a live server. If a rule needs to know something, that
  * something must first be captured into the Snapshot. This is the constraint
