@@ -33,6 +33,7 @@ Break it once and none of the rest holds.
 src/
   types.ts            Snapshot, Finding, Rule, Provenance -- the contracts
   collect/index.ts    the ONLY module that performs I/O; produces a Snapshot
+                      (config files, plugin-config-data/, system + disk facts)
   lint.ts             pure: (Snapshot, LintConfig) -> LintResult; presets, severity
   rules/              one file per rule; rules/index.ts is the registry
   data/advisories.ts  GENERATED -- GitHub Advisory Database, bundled for offline use
@@ -99,33 +100,68 @@ practice as though it were the specification is a defect**, not a wording
 choice: `config/allow-readonly-non-loopback` is `convention` precisely because
 nothing in the spec says it. Conflating the two is how a linter loses trust.
 
-**`null` is a meaningful state and must be reported, not silently passed.**
-Collectors are forgiving by design — a missing or unreadable file yields `null`,
-never an exception, because half a snapshot is useful and a crash is not. That
-pushes the responsibility onto rules: seeing a `null` means "I could not
-evaluate this", and saying nothing is the worst failure mode available,
-especially to a security rule. Both shipped rules emit a `warn` finding rather
-than returning `[]` when they cannot see — an unknown server version, an
-unreadable `settings.json`. Note also that `{}` and `null` are different facts
-for `sourcePriorities`: the file existing with nothing configured is a real
-finding, absence is not.
+**`null` is a meaningful state, and what a rule owes it depends on what the
+absence means.** Collectors are forgiving by design — a missing or unreadable
+file yields `null`, never an exception, because half a snapshot is useful and a
+crash is not. That pushes a judgement onto every rule, and the two answers are
+both live in the current rule set:
+
+- **Report it** when `null` means "something that could be dangerous is
+  invisible to me". `server/known-vulnerability` emits a `warn` on an unknown
+  server version, and `config/allow-readonly-non-loopback` emits one when
+  `settings.json` is unreadable while `allow_readonly` is on — a security rule
+  that goes quiet when it cannot see looks clean on a server that may be wide
+  open, which is the worst failure mode available to it.
+- **Stay silent** when `null` means "there is nothing here to evaluate".
+  `hardware/unstable-serial-device-path` returns `[]` with no `settings.json`
+  because absent settings are no evidence a serial connection exists at all;
+  `plugin/venus-raw-device-instance` returns `[]` with no `pluginConfig`
+  because the plugin is then not configured; `hardware/no-realtime-clock`
+  returns `[]` when `hasRTC` is `null`, which means "not Linux, or could not
+  determine" rather than "confirmed absent".
+
+The test is whether the absence is itself suspicious, not whether the rule
+happens to be about security. Note also that `{}` and `null` are different
+facts for `sourcePriorities`: the file existing with nothing configured is a
+real finding, absence is not.
 
 **Rule ids are namespaced `<area>/<name>`, and the area names the part of the
 installation the rule reasons about** — not the rule's severity, subject matter
-or provenance. It is what a user disables by, and it should map onto the shape
-of the snapshot the rule reads. Today that is `config/` (server config files)
-and `server/` (the server package itself). New areas are fine when a rule
-genuinely reads a new part of the snapshot; inventing one for a rule that reads
-`server.settings` is not.
+or provenance. It is what a user disables by, and it maps onto the part of the
+snapshot the rule reads. The four in use:
+
+- `server/` — the signalk-server package itself (`server.version`)
+- `config/` — the server's own config files (`server.settings`, `server.security`)
+- `hardware/` — the machine and what is plugged into it (`server.system`, and
+  the serial devices named in `settings.pipedProviders`)
+- `plugin/` — a third-party plugin's saved config (`server.pluginConfig`)
+
+New areas are fine when a rule genuinely reads a new part of the snapshot;
+inventing one for a rule that reads `server.settings` is not.
+
+**A plugin's id is the JSON filename under `plugin-config-data/`, which is not
+always the npm package name.** `server.pluginConfig` is keyed by that filename —
+`venus.json` is the id `venus`, though the package is `signalk-venus-plugin`.
+Verify the id per plugin rather than deriving it from the package name; this has
+already bitten. The collector reads the directory generically and keeps
+plugin-specific knowledge in the rules, the same way `sourcePriorities` works, so
+a rule that understands one plugin's config shape reaches in by id.
+
+That kind of rule also carries a maintenance surface the others do not: it is
+pinned to a third party's config schema, which can change in a release we do not
+control, unlike our own reading of `settings.json`.
+`plugin/venus-raw-device-instance` says so in its own header, and a new
+`plugin/` rule should cite where in that plugin's source the behaviour was
+verified.
 
 **`SnapshotSource.kind` is `config-dir`, `plugin-runtime` or `fixture`, and
 exists so a rule can tell.** Not every fact is capturable from every source —
 the config directory does not contain the server version, so the CLI probes for
 it or takes `--server-version` while the plugin reads `app.config.version`. No
-rule reads `snapshot.source` today, because both shipped rules read config files
-that are present under all three. A rule that depends on something only one
-collector can supply must check the kind and report that it could not evaluate,
-rather than firing on the absence.
+rule reads `snapshot.source` today: every fact the current rules need is either
+present under all three kinds or already nullable in a way the rule handles. A
+rule that depends on something only one collector can supply must check the kind
+and report that it could not evaluate, rather than firing on the absence.
 
 **Advisory data ships with the code rather than being fetched at runtime.** A
 boat at anchor has no internet, and a security rule that silently passes when
@@ -160,8 +196,8 @@ it that way.
 `start()` and then every `intervalMinutes` (default 60) on a plain
 `setInterval` that resets on every plugin start or server restart; the webapp
 renders the last completed run, and returns 503 until there has been one.
-That is adequate only because both shipped rules read static config files that
-are complete at t=0. The `requiresLiveData` flag on `Rule` is declared and unset
+That is adequate only because every shipped rule reads static config files, or
+host facts, that are complete at t=0. The `requiresLiveData` flag on `Rule` is declared and unset
 on every shipped rule — it exists so a future scheduler has something to key
 off. The open questions (boot-time false positives on paths that have not
 arrived yet; findings that flap as the NMEA bus warms up) are written out in
@@ -181,7 +217,7 @@ npm ci && npm run format:check && npm run build && npm test
 ```
 
 That is the whole CI gate, in CI's order — run it before pushing and a red build
-is a surprise rather than the norm. Fast and fully offline: 30 tests in well
+is a surprise rather than the norm. Fast and fully offline: 50 tests in well
 under a second, and nothing here needs a running Signal K server, a network, or
 a boat.
 

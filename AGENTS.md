@@ -42,6 +42,15 @@ So, before adding one:
   on `allow_readonly` **and** a non-loopback binding, because unauthenticated
   read access is entirely reasonable alone at anchor, and a network binding is
   the normal case on every boat with a chartplotter.
+- **Prefer a check that can only fail in the safe direction.**
+  `hardware/no-realtime-clock` compares the captured clock against
+  `GENERATED_AT` — a moment this build provably post-dates — so it can miss a
+  wrong clock but can never accuse a correct one. Where a threshold has to be
+  picked, pick the one whose errors are silence rather than noise.
+- **Check the outcome, not the mechanism.** The same rule deliberately does not
+  look for an RTC plugin: NTP, a GPS-time plugin, or something we have never
+  heard of all fix the clock, and flagging someone who fixed it a different way
+  is worse than saying nothing.
 - **Write the fixture that must stay clean** before the one that must fire.
   Both belong in the rule's tests.
 - **Set `provenance` honestly**, per the four values in `CLAUDE.md`. Claiming
