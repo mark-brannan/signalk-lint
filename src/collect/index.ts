@@ -28,6 +28,41 @@ async function readJson(path: string): Promise<Record<string, unknown> | null> {
   }
 }
 
+/**
+ * Key names whose values are treated as credentials.
+ *
+ * A denylist, which is the honest shape of the problem: plugin configs are
+ * third-party schemas we do not control, so there is no allowlist we could
+ * hold complete. It follows that redaction reduces the blast radius rather
+ * than eliminating it -- a secret stored under an innocuous key still gets
+ * through, and the docs say so rather than implying a guarantee.
+ *
+ * The alternative -- keeping only keys some rule names -- was rejected: it
+ * would make the collector carry plugin-specific knowledge that deliberately
+ * lives in rules, and every new rule would need a collector change.
+ */
+const SECRET_KEY_PATTERN =
+  /pass(word|wd|phrase)?$|secret|token|credential|^auth$|apikey|api_?key|privatekey|private_?key|session|cookie|signature/i
+
+export const REDACTED = '[redacted]'
+
+/**
+ * Recursively replace credential-shaped values, preserving structure.
+ *
+ * Shape is kept because a rule may legitimately need to know that a password
+ * is *set* without knowing what it is -- "MQTT configured with no TLS" is a
+ * finding someone will want, and it must not require the secret to reason.
+ */
+function redactSecrets(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(redactSecrets)
+  if (value === null || typeof value !== 'object') return value
+  const out: Record<string, unknown> = {}
+  for (const [key, inner] of Object.entries(value as Record<string, unknown>)) {
+    out[key] = SECRET_KEY_PATTERN.test(key) ? REDACTED : redactSecrets(inner)
+  }
+  return out
+}
+
 function asBool(v: unknown): boolean | null {
   return typeof v === 'boolean' ? v : null
 }
@@ -141,7 +176,9 @@ async function pluginConfig(
       .map(async (name) => {
         const id = name.slice(0, -'.json'.length)
         const parsed = await readJson(join(dir, name))
-        if (parsed !== null) result[id] = parsed
+        // Redact on the way in, so nothing downstream -- the /snapshot route,
+        // --save-snapshot, a rule -- ever holds the cleartext.
+        if (parsed !== null) result[id] = redactSecrets(parsed)
       })
   )
   return result

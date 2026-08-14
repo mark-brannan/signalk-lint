@@ -3,6 +3,7 @@ import { mkdir, mkdtemp, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { collect } from '../src/collect/index.js'
+import { Snapshot } from '../src/types.js'
 
 async function configDirWith(files: Record<string, unknown>): Promise<string> {
   const dir = await mkdtemp(join(tmpdir(), 'sk-lint-'))
@@ -126,5 +127,79 @@ describe('collect()', () => {
     expect(serverA).toEqual(serverB)
     expect(systemA.nodeVersion).toBe(systemB.nodeVersion)
     expect(a.capturedAt).toBe('2026-08-01T00:00:00.000Z')
+  })
+})
+
+describe('plugin config redaction', () => {
+  async function snapshotWithPluginConfig(
+    files: Record<string, unknown>
+  ): Promise<Snapshot> {
+    const dir = await mkdtemp(join(tmpdir(), 'sk-lint-'))
+    await mkdir(join(dir, 'plugin-config-data'))
+    for (const [name, contents] of Object.entries(files)) {
+      await writeFile(
+        join(dir, 'plugin-config-data', name),
+        JSON.stringify(contents)
+      )
+    }
+    return collect({ configDir: dir })
+  }
+
+  it('keeps plugin credentials out of the snapshot', async () => {
+    // Plugin configs are read whole, and boat plugins routinely hold broker
+    // credentials. A snapshot gets pasted into bug reports, so this is the
+    // same promise securityFactsFrom keeps for security.json.
+    const snapshot = await snapshotWithPluginConfig({
+      'venus.json': {
+        enabled: true,
+        configuration: {
+          mqttHost: '192.168.1.20',
+          mqttPassword: 'SUPER-SECRET-MQTT-PW',
+          nested: { accessToken: 'TOKEN-SECRET' }
+        }
+      }
+    })
+    const serialized = JSON.stringify(snapshot)
+
+    expect(serialized).not.toContain('SUPER-SECRET-MQTT-PW')
+    expect(serialized).not.toContain('TOKEN-SECRET')
+  })
+
+  it('preserves the non-secret config a rule reads', async () => {
+    // Redaction must not narrow what rules can see: venus reads these two.
+    const snapshot = await snapshotWithPluginConfig({
+      'venus.json': {
+        enabled: true,
+        configuration: {
+          useDeviceNames: false,
+          instanceMappings: [{ type: 'battery', venusId: 279 }],
+          mqttPassword: 'SECRET'
+        }
+      }
+    })
+    const venus = snapshot.server.pluginConfig?.venus as {
+      enabled: boolean
+      configuration: Record<string, unknown>
+    }
+
+    expect(venus.enabled).toBe(true)
+    expect(venus.configuration.useDeviceNames).toBe(false)
+    expect(venus.configuration.instanceMappings).toEqual([
+      { type: 'battery', venusId: 279 }
+    ])
+  })
+
+  it('keeps the key so a rule can still tell a secret is set', async () => {
+    // "MQTT configured with no TLS" is a finding someone will want, and it
+    // must not need the password itself to reason.
+    const snapshot = await snapshotWithPluginConfig({
+      'gw.json': { configuration: { password: 'SECRET' } }
+    })
+    const gw = snapshot.server.pluginConfig?.gw as {
+      configuration: Record<string, unknown>
+    }
+
+    expect(Object.keys(gw.configuration)).toContain('password')
+    expect(gw.configuration.password).not.toBe('SECRET')
   })
 })
