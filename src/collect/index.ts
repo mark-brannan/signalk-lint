@@ -31,24 +31,29 @@ async function readJson(path: string): Promise<Record<string, unknown> | null> {
 /**
  * Key names whose values are treated as credentials.
  *
- * A denylist, which is the honest shape of the problem: plugin configs are
- * third-party schemas we do not control, so there is no allowlist we could
- * hold complete. It follows that redaction reduces the blast radius rather
- * than eliminating it -- a secret stored under an innocuous key still gets
- * through, and the docs say so rather than implying a guarantee.
+ * A denylist, because plugin configs are third-party schemas nobody here
+ * controls -- there is no allowlist that could be held complete. So this
+ * reduces the blast radius rather than eliminating it, and the docs say that
+ * plainly instead of implying a guarantee.
+ *
+ * Erring wide is deliberate: over-redacting costs a rule author one round trip
+ * to add an exception, while under-redacting puts a live credential in a file
+ * someone pastes into a bug report. `key` therefore matches anywhere in a name --
+ * catching `sharedKey`, `accessKey` and `accessKeyId` at the price of also
+ * hitting an innocent `keyName`. `hash` and `salt` are here because a stored hash is still a
+ * credential-equivalent, and `cert`/`pem` because a private half is routinely
+ * pasted into the same field as the public one.
  *
  * The alternative -- keeping only keys some rule names -- was rejected: it
  * would make the collector carry plugin-specific knowledge that deliberately
  * lives in rules, and every new rule would need a collector change.
  */
 const SECRET_KEY_PATTERN =
-  /pass(word|wd|phrase)?$|secret|token|credential|^auth$|apikey|api_?key|privatekey|private_?key|session|cookie|signature/i
+  /pass(word|wd|phrase)?$|secret|token|credential|^auth(oriz(ation|ed))?$|bearer|jwt|api_?key|key|privatekey|private_?key|session|cookie|signature|sign(ing)?_?key|^pin$|salt|hash|^cert|certificate|^pem$|psk/i
 
 export const REDACTED = '[redacted]'
 
 /**
- * Recursively replace credential-shaped values, preserving structure.
- *
  * Shape is kept because a rule may legitimately need to know that a password
  * is *set* without knowing what it is -- "MQTT configured with no TLS" is a
  * finding someone will want, and it must not require the secret to reason.

@@ -55,6 +55,44 @@ describe('parseSnapshot()', () => {
     expect(() => parseSnapshot('not json at all')).toThrow(/not valid JSON/)
     expect(() => parseSnapshot('[]')).toThrow(/not a JSON object/)
     expect(() => parseSnapshot('{}')).toThrow(/schemaVersion/)
-    expect(() => parseSnapshot('{"schemaVersion":1}')).toThrow(/server facts/)
+  })
+
+  it('refuses a schemaVersion that no capture could have written', () => {
+    // 0 and 1.5 previously slipped through a bare typeof check, taking a
+    // shapeless object with them.
+    for (const version of [0, -1, 1.5, '1', null]) {
+      const raw = JSON.stringify({ schemaVersion: version, server: {} })
+      expect(() => parseSnapshot(raw)).toThrow(/schemaVersion/)
+    }
+  })
+
+  it('refuses a snapshot missing fields no capture has been without', () => {
+    // The distinction that matters: absent capturedAt means "not a snapshot",
+    // while absent pluginConfig means "an older snapshot" and is normalized.
+    const base = JSON.parse(fixtureText('current-server')) as Record<
+      string,
+      unknown
+    >
+    const without = (path: string): string => {
+      const copy = JSON.parse(JSON.stringify(base)) as Record<string, unknown>
+      const parts = path.split('.')
+      let node = copy as Record<string, unknown>
+      for (const part of parts.slice(0, -1)) {
+        node = node[part] as Record<string, unknown>
+      }
+      delete node[parts[parts.length - 1]!]
+      return JSON.stringify(copy)
+    }
+
+    expect(() => parseSnapshot(without('capturedAt'))).toThrow(/capturedAt/)
+    expect(() => parseSnapshot(without('source'))).toThrow(/source/)
+    expect(() => parseSnapshot(without('source.kind'))).toThrow(/source.kind/)
+    expect(() => parseSnapshot(without('server'))).toThrow(/server facts/)
+    expect(() => parseSnapshot(without('server.system'))).toThrow(
+      /server.system/
+    )
+    expect(() => parseSnapshot(without('server.system.nodeVersion'))).toThrow(
+      /nodeVersion/
+    )
   })
 })
