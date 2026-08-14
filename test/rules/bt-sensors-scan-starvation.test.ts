@@ -25,7 +25,8 @@ describe('plugin/bt-sensors-scan-starvation', () => {
   it('flags an interval shorter than the discovery timeout', () => {
     const findings = rule.evaluate(fixture('bt-sensors-scan-starvation'))
     expect(findings).toHaveLength(1)
-    expect(findings[0]?.title).toMatch(/every 10s but takes 30s/)
+    expect(findings[0]?.remediation?.currentValue).toBe(10)
+    expect(findings[0]?.remediation?.proposedValue).toBe(0)
   })
 
   it('cites the real interval and timeout it fired on', () => {
@@ -51,36 +52,39 @@ describe('plugin/bt-sensors-scan-starvation', () => {
     expect(rule.evaluate(fixture('bt-sensors-discovery-off'))).toEqual([])
   })
 
-  it('fires on a negative interval, which scans continuously', () => {
-    // Regression: "not positive" is not the same as "off". The plugin gates
-    // its loop on a truthiness check, so -1 starts it, and setInterval clamps
-    // any delay below 1 to 1ms -- verified: setInterval(fn, -5000) fires ~45
-    // times in 50ms. Treating <= 0 as disabled silently passed the single
-    // worst configuration the plugin can hold.
+  // Both ends of the range collapse to the same runtime behaviour: the loop
+  // starts, and setInterval replaces an out-of-range delay with 1ms. Measured:
+  // setInterval(fn, -5000) fires ~45 times in 50ms, and a delay above
+  // 2147483647ms reports _idleTimeout 1. Neither is caught by comparing the
+  // interval against the timeout, so both have to be decided before that.
+  it.each([
+    ['negative', -1],
+    ['negative and larger in magnitude than the timeout', -60],
+    ['above what a 32-bit timer delay can hold', 2_147_484],
+    ['far above it, as when someone means "never rescan"', 99_999_999],
+    ['a sub-millisecond fraction', 0.0005]
+  ])('fires on an interval that is %s', (_label, discoveryInterval) => {
     const snapshot = fixture('bt-sensors-scan-starvation')
-    btConfigOf(snapshot).configuration.discoveryInterval = -1
+    btConfigOf(snapshot).configuration.discoveryInterval = discoveryInterval
 
     const findings = rule.evaluate(snapshot)
     expect(findings).toHaveLength(1)
-    expect(findings[0]?.title).toMatch(
-      /negative \(-1\), so scanning never stops/
-    )
     expect(findings[0]?.evidence[0]).toEqual({
       path: 'server.pluginConfig.bt-sensors-plugin-sk.configuration.discoveryInterval',
-      value: -1,
+      value: discoveryInterval,
       file: 'plugin-config-data/bt-sensors-plugin-sk.json'
     })
+    expect(findings[0]?.remediation?.currentValue).toBe(discoveryInterval)
     expect(findings[0]?.remediation?.proposedValue).toBe(0)
   })
 
-  it('fires on a negative interval even when it exceeds the timeout', () => {
-    // -60 is "greater than" nothing useful; the numeric comparison that
-    // catches the ordinary case would wave this through if it ran first.
+  it('does not fire at the largest interval a timer can actually hold', () => {
+    // 2147483s * 1000 is exactly representable, so the timer honours it and
+    // the plugin really does scan once every ~24.8 days. Pointless, but not
+    // this rule's failure -- the boundary has to sit where the clamp does.
     const snapshot = fixture('bt-sensors-scan-starvation')
-    const config = btConfigOf(snapshot).configuration
-    config.discoveryInterval = -60
-    config.discoveryTimeout = 30
-    expect(rule.evaluate(snapshot)).toHaveLength(1)
+    btConfigOf(snapshot).configuration.discoveryInterval = 2_147_483
+    expect(rule.evaluate(snapshot)).toEqual([])
   })
 
   it('does not fire when the interval is longer than the timeout', () => {
@@ -106,11 +110,12 @@ describe('plugin/bt-sensors-scan-starvation', () => {
 
     const findings = rule.evaluate(snapshot)
     expect(findings).toHaveLength(1)
-    expect(findings[0]?.title).toMatch(/every 10s but takes 30s/)
     // Evidence reports what was actually in the file, not the effective value.
     expect(findings[0]?.evidence[0]?.value).toBeNull()
     expect(findings[0]?.evidence[1]?.value).toBeNull()
-    expect(findings[0]?.detail).toMatch(/fills in\s+its own defaults/)
+    // The remediation still carries the effective interval, so the finding is
+    // actionable even though nothing was written to point at.
+    expect(findings[0]?.remediation?.currentValue).toBeNull()
   })
 
   it('does not fire when the plugin is disabled', () => {

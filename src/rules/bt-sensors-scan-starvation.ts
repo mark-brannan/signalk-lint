@@ -23,9 +23,19 @@
  * so 0 never starts it. That is the correct configuration once every
  * peripheral is pinned by MAC address, and this rule must not fire on it.
  *
- * Note that the same guard is a truthiness check, not a positivity check, so
- * a negative interval starts the loop and setInterval clamps the delay to
- * 1ms. Only 0 is off; negatives are the worst case, not a quieter one.
+ * Only 0 is off, and "not scanning often" is not a second way to switch it
+ * off. The guard is a truthiness check rather than a positivity check, and
+ * setInterval keeps its delay in a 32-bit signed integer: anything outside
+ * 1..2147483647 ms is silently replaced with 1ms. So both a negative interval
+ * and one too large to represent (over ~24.8 days) start the loop and then
+ * run it about once a millisecond -- the worst case the plugin can reach,
+ * arrived at from either end of the range.
+ *
+ * The large-value end is the more likely mistake: someone who wants to stop
+ * rescanning and does not know 0 is the way types a big number instead, and
+ * gets continuous scanning for it. This rule reasons about the delay the
+ * timer actually runs at rather than the number in the file, so both ends are
+ * one case and neither depends on spotting the sign.
  *
  * Note the plugin's schema defaults: discoveryInterval 10, discoveryTimeout
  * 30. Those defaults are themselves the starving combination, and the plugin
@@ -53,6 +63,14 @@ interface BtSensorsPluginConfig {
   }
 }
 
+/**
+ * setInterval keeps its delay in a 32-bit signed integer. A delay outside
+ * 1..2147483647 ms is not rejected, and not honoured either -- it is replaced
+ * with 1ms (Node logs a TimeoutOverflowWarning for the upper end and nothing
+ * at all for the lower). Verified by measurement, not from the docs.
+ */
+const TIMER_MAX_DELAY_MS = 2_147_483_647
+
 /** The value the plugin will actually run with, and whether it was written. */
 function effective(
   observed: unknown,
@@ -61,6 +79,20 @@ function effective(
   return typeof observed === 'number' && Number.isFinite(observed)
     ? { value: observed, explicit: true }
     : { value: fallback, explicit: false }
+}
+
+/**
+ * Why the timer will not run at the interval the config asks for, or null
+ * when it will. Both ends collapse to the same runtime behaviour -- a scan
+ * restarted roughly every millisecond -- so they are one finding, not two.
+ */
+function clampReason(
+  intervalSeconds: number
+): 'too-small' | 'too-large' | null {
+  const delayMs = intervalSeconds * 1000
+  if (delayMs > TIMER_MAX_DELAY_MS) return 'too-large'
+  if (delayMs < 1) return 'too-small'
+  return null
 }
 
 export const btSensorsScanStarvation: Rule = {
@@ -94,28 +126,37 @@ export const btSensorsScanStarvation: Rule = {
     // rather than just comparing the two numbers.
     if (interval.value === 0) return []
 
-    // A negative interval is the pathological case, and it is NOT caught by
-    // comparing the two numbers -- it has to be handled before that. The
-    // plugin's guard is a truthiness check, and -1 is truthy, so the loop
-    // starts; setInterval then clamps any delay below 1 to 1ms. The result is
-    // a rescan roughly every millisecond, which is far worse than the case
-    // this rule was written for. Treating "not positive" as "off" would have
-    // silently passed the single worst configuration the plugin can hold.
-    if (interval.value < 0) {
+    // An interval the timer cannot represent is the pathological case, and it
+    // is NOT caught by comparing the two numbers -- it has to be handled
+    // before that. Comparing them would wave through both a negative value
+    // (which is truthy, so the loop starts) and a huge one (which looks like
+    // "scan almost never" and is the natural thing to type when you want to
+    // stop rescanning). Both are replaced with a 1ms delay at runtime, so the
+    // rule asks what the timer will do rather than what the number looks like.
+    const clamped = clampReason(interval.value)
+    if (clamped !== null) {
+      const cause =
+        clamped === 'too-large'
+          ? `is far too large for a timer to hold (over ${Math.floor(TIMER_MAX_DELAY_MS / 1000)} seconds)`
+          : 'is below the smallest delay a timer can hold'
+
       return [
         {
-          title: `Bluetooth scan interval is negative (${interval.value}), so scanning never stops`,
+          title:
+            'Bluetooth scan restarts about every millisecond, so scanning never stops',
           detail:
             `bt-sensors-plugin-sk has a discovery interval of ` +
-            `${interval.value}. The plugin decides whether to start its ` +
-            'rescan loop with a truthiness check, and a negative number is ' +
-            'truthy, so the loop starts. It then hands that value to ' +
-            'setInterval, which clamps any delay below 1 to one millisecond. ' +
+            `${interval.value}, which ${cause}. The plugin decides whether to ` +
+            'start its rescan loop by testing the value for truthiness rather ' +
+            'than for sanity, so the loop starts, and the timer underneath it ' +
+            'silently replaces an out-of-range delay with one millisecond. ' +
             'The adapter is therefore told to begin a new ' +
             `${timeout.value}-second scan roughly a thousand times a second. ` +
             'It never leaves discovery, connections to known peripherals are ' +
-            'aborted, and the plugin still reports itself as started. This ' +
-            'is the same failure as a too-short interval, at its extreme.',
+            'aborted, and the plugin still reports itself as started. If the ' +
+            'intent here was to stop scanning for new devices, this achieves ' +
+            'the exact opposite of it: 0 is the only value that turns the ' +
+            'loop off.',
           evidence: [
             {
               path: `server.pluginConfig.${PLUGIN_ID}.configuration.discoveryInterval`,
@@ -133,11 +174,10 @@ export const btSensorsScanStarvation: Rule = {
             description:
               'Set "Scan for new devices interval" to 0 in Server → Plugin ' +
               'Config → BT Sensors if your peripherals are already ' +
-              'configured by MAC address, or to a value longer than the ' +
-              `discovery timeout (${timeout.value}s) if you want the plugin ` +
-              "to keep finding new devices. The plugin's own config screen " +
-              'will not produce a negative value, so this one was almost ' +
-              'certainly hand-edited or restored from a bad backup.',
+              'configured by MAC address — 0 is what switches rescanning ' +
+              'off, and no other value does. If you do want the plugin to ' +
+              'keep finding new devices, set it to something longer than the ' +
+              `discovery timeout (${timeout.value}s) instead.`,
             target: `pluginConfig.${PLUGIN_ID}.configuration.discoveryInterval`,
             currentValue: interval.value,
             proposedValue: 0
