@@ -23,6 +23,10 @@
  * so 0 never starts it. That is the correct configuration once every
  * peripheral is pinned by MAC address, and this rule must not fire on it.
  *
+ * Note that the same guard is a truthiness check, not a positivity check, so
+ * a negative interval starts the loop and setInterval clamps the delay to
+ * 1ms. Only 0 is off; negatives are the worst case, not a quieter one.
+ *
  * Note the plugin's schema defaults: discoveryInterval 10, discoveryTimeout
  * 30. Those defaults are themselves the starving combination, and the plugin
  * fills them in when the keys are absent, so this fires on a stock install.
@@ -83,11 +87,64 @@ export const btSensorsScanStarvation: Rule = {
       DEFAULT_DISCOVERY_TIMEOUT
     )
 
-    // 0 (or anything non-positive) means the rescan loop never starts. This is
-    // the healthy configuration for an install whose peripherals are all
-    // pinned by MAC address, and it is the whole reason this rule checks the
-    // value rather than just comparing the two numbers.
-    if (interval.value <= 0) return []
+    // Exactly 0 means the rescan loop never starts -- the plugin's guard is
+    // `if (options.discoveryInterval && !discoveryIntervalID)`. This is the
+    // healthy configuration for an install whose peripherals are all pinned
+    // by MAC address, and it is the whole reason this rule checks the value
+    // rather than just comparing the two numbers.
+    if (interval.value === 0) return []
+
+    // A negative interval is the pathological case, and it is NOT caught by
+    // comparing the two numbers -- it has to be handled before that. The
+    // plugin's guard is a truthiness check, and -1 is truthy, so the loop
+    // starts; setInterval then clamps any delay below 1 to 1ms. The result is
+    // a rescan roughly every millisecond, which is far worse than the case
+    // this rule was written for. Treating "not positive" as "off" would have
+    // silently passed the single worst configuration the plugin can hold.
+    if (interval.value < 0) {
+      return [
+        {
+          title: `Bluetooth scan interval is negative (${interval.value}), so scanning never stops`,
+          detail:
+            `bt-sensors-plugin-sk has a discovery interval of ` +
+            `${interval.value}. The plugin decides whether to start its ` +
+            'rescan loop with a truthiness check, and a negative number is ' +
+            'truthy, so the loop starts. It then hands that value to ' +
+            'setInterval, which clamps any delay below 1 to one millisecond. ' +
+            'The adapter is therefore told to begin a new ' +
+            `${timeout.value}-second scan roughly a thousand times a second. ` +
+            'It never leaves discovery, connections to known peripherals are ' +
+            'aborted, and the plugin still reports itself as started. This ' +
+            'is the same failure as a too-short interval, at its extreme.',
+          evidence: [
+            {
+              path: `server.pluginConfig.${PLUGIN_ID}.configuration.discoveryInterval`,
+              value: interval.value,
+              file: CONFIG_FILE
+            },
+            {
+              path: `server.pluginConfig.${PLUGIN_ID}.configuration.discoveryTimeout`,
+              value: timeout.explicit ? timeout.value : null,
+              file: CONFIG_FILE
+            }
+          ],
+          remediation: {
+            kind: 'manual',
+            description:
+              'Set "Scan for new devices interval" to 0 in Server → Plugin ' +
+              'Config → BT Sensors if your peripherals are already ' +
+              'configured by MAC address, or to a value longer than the ' +
+              `discovery timeout (${timeout.value}s) if you want the plugin ` +
+              "to keep finding new devices. The plugin's own config screen " +
+              'will not produce a negative value, so this one was almost ' +
+              'certainly hand-edited or restored from a bad backup.',
+            target: `pluginConfig.${PLUGIN_ID}.configuration.discoveryInterval`,
+            currentValue: interval.value,
+            proposedValue: 0
+          }
+        }
+      ]
+    }
 
     // Interval >= timeout means each scan completes before the next begins.
     if (interval.value >= timeout.value) return []

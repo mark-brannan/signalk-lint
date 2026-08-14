@@ -61,24 +61,62 @@ export interface PipedProvider {
  */
 const NMEA_PROTOCOLS = new Set(['NMEA2000', 'NMEA0183'])
 
+function isObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
 /**
- * The configured providers, or null when the question can't be answered --
- * settings.json absent, or `pipedProviders` present but not an array.
+ * Whether a value is shaped like a provider entry well enough to read.
  *
- * An empty array is a real answer ("no connections are configured") and comes
- * back as `[]`, not null. Rules that care about that distinction depend on it.
+ * This is not schema validation -- it is the narrow guarantee callers need in
+ * order not to throw. settings.json is a file on a boat: hand-edited, restored
+ * from a half-finished backup, written by a script someone wrote once. A rule
+ * that throws on a malformed entry does not just fail itself, it takes down
+ * the whole lint run, because lint() evaluates every rule in one pass. The
+ * collector's rule -- half a snapshot is useful, a crash is not -- has to hold
+ * here too.
+ */
+function isPipedProvider(value: unknown): value is PipedProvider {
+  if (!isObject(value)) return false
+
+  const elements = value.pipeElements
+  if (elements === undefined) return true
+  if (!Array.isArray(elements)) return false
+
+  return elements.every(
+    (element) =>
+      isObject(element) &&
+      (element.options === undefined || isObject(element.options))
+  )
+}
+
+/**
+ * The configured providers, or null when the question can't be answered.
+ *
+ * Three inputs, three different answers:
+ *
+ *   absent key      -> []    signalk-server materialises an empty array for
+ *                            it in readSettingsFile(), so "no connections"
+ *                            is the literal truth, not an inference.
+ *   `[]`            -> []    same state, written out.
+ *   null / not an   -> null  malformed settings.json. signalk-server only
+ *   array / entries          substitutes for `undefined`, so an explicit
+ *   that aren't               null survives to its own `.forEach` and breaks
+ *   readable                  the server. "No connections are configured" is
+ *                             the wrong thing to tell someone whose config
+ *                             file is broken -- and a rule cannot report on
+ *                             entries it cannot read without guessing.
  */
 export function pipedProvidersOf(snapshot: Snapshot): PipedProvider[] | null {
   const settings = snapshot.server.settings
   if (settings === null) return null
 
   const providers = settings.pipedProviders
-  // An absent key and an empty array mean the same thing to a boat: nothing
-  // is wired up. Collapse them here so callers get one shape.
-  if (providers === undefined || providers === null) return []
+  if (providers === undefined) return []
   if (!Array.isArray(providers)) return null
+  if (!providers.every(isPipedProvider)) return null
 
-  return providers as PipedProvider[]
+  return providers
 }
 
 /**
@@ -127,7 +165,7 @@ export function describeProvider(provider: PipedProvider): {
     ? provider.pipeElements
     : []
   return {
-    id: provider.id ?? '(unnamed connection)',
+    id: typeof provider.id === 'string' ? provider.id : '(unnamed connection)',
     enabled: isEnabled(provider),
     protocols: elements
       .map((element) => element.options?.type)

@@ -3,9 +3,16 @@
  *
  * `pipedProviders` in settings.json is the list of data connections — the
  * NMEA 2000 bus, the NMEA 0183 serial instrument, the upstream Signal K
- * server. With an empty list, nothing feeds the server. It starts cleanly,
- * serves its admin UI, runs its plugins and reports itself as healthy; the
- * data model simply stays empty, because nothing is wired to fill it.
+ * server. With an empty list, none of those are feeding the server.
+ *
+ * Note the limit of that claim, which the finding has to respect: connections
+ * are not the only way data arrives. Plugins inject deltas directly, without
+ * ever appearing in `pipedProviders` — signalk-venus-plugin over D-Bus or
+ * MQTT, derived-data, the weather and tide plugins, signalk-fixed-position.
+ * A plugin-only install can have a well-populated data model and an empty
+ * connection list, so this rule says what it actually observed (no wired-in
+ * instruments) rather than the broader "nothing is feeding this server",
+ * which would be a guess and, on those installs, simply false.
  *
  * That failure is quiet in a specific way: the hardware can be fine. On the
  * boat this rule comes from, the NMEA 2000 bus was live and carrying GNSS the
@@ -34,7 +41,7 @@ import { pipedProvidersOf } from './piped-providers.js'
 export const noDataConnections: Rule = {
   id: 'config/no-data-connections',
   description:
-    'No data connections are configured, so nothing feeds the data model',
+    'No NMEA or upstream Signal K data connections are configured, so no wired-in instrument reaches the server',
   defaultSeverity: 'warn',
   provenance: 'opinion',
 
@@ -52,15 +59,18 @@ export const noDataConnections: Rule = {
       {
         title: 'No data connections are configured',
         detail:
-          'This server has no data connections, so nothing is feeding it — ' +
-          'no NMEA 2000 bus, no NMEA 0183 instrument, no upstream Signal K ' +
-          'server. If you are still setting up, that is expected and this is ' +
-          'simply the next step. If you thought you already had instruments ' +
-          'connected, this is why no data is arriving: it is a gap in the ' +
+          'This server has no data connections configured — no NMEA 2000 ' +
+          'bus, no NMEA 0183 instrument, no upstream Signal K server. If you ' +
+          'are still setting up, that is expected and this is simply the ' +
+          'next step. If you thought you already had instruments connected, ' +
+          'this is why their data is not arriving: it is a gap in the ' +
           'configuration rather than a fault in the wiring. A live bus with ' +
           'no connection reading it looks exactly like dead instruments from ' +
           'inside Signal K, which is what makes this one worth ruling out ' +
-          'before you go looking at the hardware.',
+          'before you go looking at the hardware. Note that plugins feed the ' +
+          'data model directly and do not appear in this list, so a server ' +
+          'built entirely on plugins can be working exactly as intended and ' +
+          'still show this finding.',
         evidence: [
           {
             path: 'server.settings.pipedProviders',

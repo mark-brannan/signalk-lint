@@ -63,6 +63,31 @@ describe('config/no-data-connections', () => {
     expect(rule.evaluate(snapshot)).toEqual([])
   })
 
+  it('does not fire on an explicit null, which is a broken settings.json', () => {
+    // signalk-server only substitutes an empty array for `undefined`, so an
+    // explicit null survives to its own .forEach and breaks the server.
+    // "No connections are configured" is the wrong thing to tell someone
+    // whose config file is malformed.
+    const snapshot = fixture('no-data-connections')
+    settingsOf(snapshot).pipedProviders = null
+    expect(rule.evaluate(snapshot)).toEqual([])
+  })
+
+  it('does not fire when an entry is unreadable', () => {
+    const snapshot = fixture('no-data-connections')
+    settingsOf(snapshot).pipedProviders = [null]
+    expect(rule.evaluate(snapshot)).toEqual([])
+  })
+
+  it('does not claim to be the only way data reaches the model', () => {
+    // Plugins inject deltas without appearing in pipedProviders, so a
+    // plugin-only install can be working exactly as intended and still show
+    // this finding. The text has to say so rather than assert an empty model.
+    const findings = rule.evaluate(fixture('no-data-connections'))
+    expect(findings[0]?.detail).toMatch(/plugins feed the data model directly/)
+    expect(findings[0]?.detail).not.toMatch(/nothing is feeding/)
+  })
+
   it('is pure: repeated evaluation yields identical results', () => {
     const snapshot = fixture('no-data-connections')
     expect(rule.evaluate(snapshot)).toEqual(rule.evaluate(snapshot))

@@ -138,6 +138,26 @@ describe('plugin/fallback-is-primary', () => {
     expect(rule.evaluate(snapshot)).toEqual([])
   })
 
+  it.each([
+    ['an explicit null', null],
+    ['a null entry', [null]],
+    ['a non-object entry', ['n2k-can0']],
+    ['a null pipe element', [{ id: 'x', pipeElements: [null] }]],
+    [
+      'a non-object pipe element options',
+      [{ id: 'x', pipeElements: [{ options: 7 }] }]
+    ]
+  ])('survives malformed pipedProviders: %s', (_label, providers) => {
+    // Regression: these threw a TypeError, and because lint() evaluates every
+    // rule in one pass, one malformed entry took down the whole run -- not
+    // just this rule. A linter that crashes on a messy config has failed at
+    // the job it exists to do.
+    const snapshot = fixture('fallback-is-primary')
+    settingsOf(snapshot).pipedProviders = providers
+    expect(() => rule.evaluate(snapshot)).not.toThrow()
+    expect(rule.evaluate(snapshot)).toEqual([])
+  })
+
   it('does not fire when settings.json is missing', () => {
     // Half the conjunction is unknown, so there is no conjunction to report.
     const snapshot = fixture('fallback-is-primary')

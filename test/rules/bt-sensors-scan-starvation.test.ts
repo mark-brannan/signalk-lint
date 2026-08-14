@@ -51,6 +51,38 @@ describe('plugin/bt-sensors-scan-starvation', () => {
     expect(rule.evaluate(fixture('bt-sensors-discovery-off'))).toEqual([])
   })
 
+  it('fires on a negative interval, which scans continuously', () => {
+    // Regression: "not positive" is not the same as "off". The plugin gates
+    // its loop on a truthiness check, so -1 starts it, and setInterval clamps
+    // any delay below 1 to 1ms -- verified: setInterval(fn, -5000) fires ~45
+    // times in 50ms. Treating <= 0 as disabled silently passed the single
+    // worst configuration the plugin can hold.
+    const snapshot = fixture('bt-sensors-scan-starvation')
+    btConfigOf(snapshot).configuration.discoveryInterval = -1
+
+    const findings = rule.evaluate(snapshot)
+    expect(findings).toHaveLength(1)
+    expect(findings[0]?.title).toMatch(
+      /negative \(-1\), so scanning never stops/
+    )
+    expect(findings[0]?.evidence[0]).toEqual({
+      path: 'server.pluginConfig.bt-sensors-plugin-sk.configuration.discoveryInterval',
+      value: -1,
+      file: 'plugin-config-data/bt-sensors-plugin-sk.json'
+    })
+    expect(findings[0]?.remediation?.proposedValue).toBe(0)
+  })
+
+  it('fires on a negative interval even when it exceeds the timeout', () => {
+    // -60 is "greater than" nothing useful; the numeric comparison that
+    // catches the ordinary case would wave this through if it ran first.
+    const snapshot = fixture('bt-sensors-scan-starvation')
+    const config = btConfigOf(snapshot).configuration
+    config.discoveryInterval = -60
+    config.discoveryTimeout = 30
+    expect(rule.evaluate(snapshot)).toHaveLength(1)
+  })
+
   it('does not fire when the interval is longer than the timeout', () => {
     const snapshot = fixture('bt-sensors-scan-starvation')
     btConfigOf(snapshot).configuration.discoveryInterval = 60
