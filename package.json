@@ -1,7 +1,7 @@
 {
   "name": "signalk-lint",
-  "version": "0.2.0",
-  "description": "A linter for Signal K server installations. Deterministic, offline rules over a captured snapshot of your boat's configuration and data model.",
+  "version": "0.2.1",
+  "description": "A linter for Signal K: checks a snapshot of your configuration and data against deterministic rules for common pitfalls.",
   "type": "module",
   "main": "./dist/index.js",
   "bin": {
@@ -52,7 +52,7 @@
   ],
   "signalk-plugin-enabled-by-default": true,
   "signalk": {
-    "displayName": "Lint"
+    "displayName": "Signal K Lint"
   },
   "author": "Mark Brannan",
   "license": "Apache-2.0",
