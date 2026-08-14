@@ -3,6 +3,7 @@ import { mkdir, mkdtemp, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { collect } from '../src/collect/index.js'
+import { Snapshot } from '../src/types.js'
 
 async function configDirWith(files: Record<string, unknown>): Promise<string> {
   const dir = await mkdtemp(join(tmpdir(), 'sk-lint-'))
@@ -126,5 +127,155 @@ describe('collect()', () => {
     expect(serverA).toEqual(serverB)
     expect(systemA.nodeVersion).toBe(systemB.nodeVersion)
     expect(a.capturedAt).toBe('2026-08-01T00:00:00.000Z')
+  })
+})
+
+describe('plugin config redaction', () => {
+  async function snapshotWithPluginConfig(
+    files: Record<string, unknown>
+  ): Promise<Snapshot> {
+    const dir = await mkdtemp(join(tmpdir(), 'sk-lint-'))
+    await mkdir(join(dir, 'plugin-config-data'))
+    for (const [name, contents] of Object.entries(files)) {
+      await writeFile(
+        join(dir, 'plugin-config-data', name),
+        JSON.stringify(contents)
+      )
+    }
+    return collect({ configDir: dir })
+  }
+
+  it('keeps plugin credentials out of the snapshot', async () => {
+    // Plugin configs are read whole, and boat plugins routinely hold broker
+    // credentials. A snapshot gets pasted into bug reports, so this is the
+    // same promise securityFactsFrom keeps for security.json.
+    const snapshot = await snapshotWithPluginConfig({
+      'venus.json': {
+        enabled: true,
+        configuration: {
+          mqttHost: '192.168.1.20',
+          mqttPassword: 'SUPER-SECRET-MQTT-PW',
+          nested: { accessToken: 'TOKEN-SECRET' }
+        }
+      }
+    })
+    const serialized = JSON.stringify(snapshot)
+
+    expect(serialized).not.toContain('SUPER-SECRET-MQTT-PW')
+    expect(serialized).not.toContain('TOKEN-SECRET')
+  })
+
+  it('preserves the non-secret config a rule reads', async () => {
+    // Redaction must not narrow what rules can see: venus reads these two.
+    const snapshot = await snapshotWithPluginConfig({
+      'venus.json': {
+        enabled: true,
+        configuration: {
+          useDeviceNames: false,
+          instanceMappings: [{ type: 'battery', venusId: 279 }],
+          mqttPassword: 'SECRET'
+        }
+      }
+    })
+    const venus = snapshot.server.pluginConfig?.venus as {
+      enabled: boolean
+      configuration: Record<string, unknown>
+    }
+
+    expect(venus.enabled).toBe(true)
+    expect(venus.configuration.useDeviceNames).toBe(false)
+    expect(venus.configuration.instanceMappings).toEqual([
+      { type: 'battery', venusId: 279 }
+    ])
+  })
+
+  it('redacts authorization-style credentials, not just passwords', async () => {
+    // Named explicitly because these were the misses: the first denylist
+    // matched `authToken` but not `authorization`, and nothing covered a
+    // bearer token, a JWT or a cloud access key.
+    const snapshot = await snapshotWithPluginConfig({
+      'x.json': {
+        configuration: {
+          authorization: 'Bearer AUTH-SECRET',
+          bearer: 'BEARER-SECRET',
+          jwt: 'JWT-SECRET',
+          accessKeyId: 'AKIA-SECRET',
+          pem: '-----BEGIN PRIVATE KEY-----PEM-SECRET'
+        }
+      }
+    })
+    const serialized = JSON.stringify(snapshot)
+
+    for (const secret of [
+      'AUTH-SECRET',
+      'BEARER-SECRET',
+      'JWT-SECRET',
+      'AKIA-SECRET',
+      'PEM-SECRET'
+    ]) {
+      expect(serialized).not.toContain(secret)
+    }
+  })
+
+  it('leaves marine and generic config alone', async () => {
+    // The opposite failure to a missed secret, and the more likely one on a
+    // boat: substring matching would redact compass (heading calibration) and
+    // pinMode (a GPIO), destroying structure in the artifact whose whole
+    // purpose is letting someone else debug the config.
+    const snapshot = await snapshotWithPluginConfig({
+      'x.json': {
+        configuration: {
+          compass: { offset: 12, calibrated: true },
+          bypass: true,
+          sessionTimeout: 30,
+          pinMode: 'input',
+          gpioPin: 17,
+          keyName: 'heading'
+        }
+      }
+    })
+    const config = (
+      snapshot.server.pluginConfig?.x as {
+        configuration: Record<string, unknown>
+      }
+    ).configuration
+
+    expect(config.compass).toEqual({ offset: 12, calibrated: true })
+    expect(config.bypass).toBe(true)
+    expect(config.sessionTimeout).toBe(30)
+    expect(config.pinMode).toBe('input')
+    expect(config.gpioPin).toBe(17)
+    // keyName is accepted collateral: `key` is a credential word on its own.
+    expect(config.keyName).not.toBe('heading')
+  })
+
+  it('redacts a session identifier but not a session timeout', async () => {
+    const snapshot = await snapshotWithPluginConfig({
+      'x.json': {
+        configuration: { sessionId: 'SECRET-SID', sessionTimeout: 30 }
+      }
+    })
+    const config = (
+      snapshot.server.pluginConfig?.x as {
+        configuration: Record<string, unknown>
+      }
+    ).configuration
+
+    expect(config.sessionId).not.toBe('SECRET-SID')
+    expect(config.sessionTimeout).toBe(30)
+  })
+
+  it('keeps the key so a rule can still tell a secret is set', async () => {
+    // "MQTT configured with no TLS" is a finding someone will want, and it
+    // must not need the password itself to reason.
+    const snapshot = await snapshotWithPluginConfig({
+      'gw.json': { configuration: { password: 'SECRET' } }
+    })
+    const gw = snapshot.server.pluginConfig?.gw as {
+      configuration: Record<string, unknown>
+    }
+
+    expect(Object.keys(gw.configuration)).toContain('password')
+    expect(gw.configuration.password).not.toBe('SECRET')
   })
 })

@@ -13,8 +13,17 @@
  * happen. Break it once and none of the rest holds.
  */
 
-/** Snapshot format version. Bump on any breaking shape change. */
-export const SNAPSHOT_SCHEMA_VERSION = 1
+/**
+ * Snapshot format version. Bump on any breaking shape change.
+ *
+ * 1 -> 2: `server.pluginConfig` and `server.system.hasRTC` were added, and
+ * plugin config values are now redacted on capture. The version was not bumped
+ * when the fields landed, which is why `parseSnapshot` has to treat a v1
+ * capture as "fields absent" rather than trusting the number alone -- a v1
+ * snapshot may or may not carry them. Bumping now is what lets a v2 reader
+ * know redaction was applied, rather than inferring it from the values.
+ */
+export const SNAPSHOT_SCHEMA_VERSION = 2
 
 /** Finding format version. Consumers should check this before trusting fields. */
 export const FINDING_SCHEMA_VERSION = 1

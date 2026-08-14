@@ -75,31 +75,48 @@ them contain judgement.
 
 ## Non-obvious constraints
 
-**A snapshot is meant to be safe to paste into a bug report, and
-`pluginConfig` currently breaks that.** People will paste them into bug reports,
-so this is the design's most load-bearing promise.
+**A snapshot must stay safe to paste into a bug report, and two different
+mechanisms keep it that way.** People will paste them into bug reports, so this
+is the design's most load-bearing promise.
 
-Where it holds: `securityFactsFrom` in `collect/index.ts` reduces
-`security.json` to counts and booleans and deliberately does not carry
-`secretKey`, user password hashes or device tokens across; `SecurityFacts` in
-`types.ts` says so and means it. `collect.test.ts` pins it by serializing a
-snapshot and asserting the secrets are absent.
+For the server's own files, the collector never carries the secret at all:
+`securityFactsFrom` reduces `security.json` to counts and booleans, and
+deliberately does not carry `secretKey`, user password hashes or device tokens
+across. `SecurityFacts` in `types.ts` says so and means it.
 
-Where it does not: `pluginConfig` copies every `plugin-config-data/*.json`
-**verbatim**, and plugin configs routinely hold MQTT passwords, broker
-credentials and API tokens. A snapshot from a real boat can therefore contain
-secrets, and `--save-snapshot` output and the `/snapshot` route carry them.
-Reducing the security file to facts while copying plugin files whole is a gap in
-one promise, not two separate decisions. **Until it is closed: treat a snapshot
-off a real installation as credential-bearing, and do not tell users it is safe
-to share.** The fix is redaction in the collector, where the existing
-`securityFactsFrom` boundary already lives.
+For plugin config it cannot work that way — `plugin-config-data/*.json` is read
+generically, because plugin-specific knowledge belongs in rules — so
+`redactSecrets` replaces credential-shaped **values** on the way in, keeping
+keys and structure. Both are pinned by tests that serialize a snapshot and
+assert the secrets are absent.
 
-The promise still constrains rules the same way regardless: a rule that needs a
-credential to reason is a rule that does not get written. Rules do not need the
-secrets to reason about posture — `plugin/venus-raw-device-instance` reads
-`useDeviceNames` and `instanceMappings`, never a password, which is why
-redaction can land without changing what any rule can see.
+**The second mechanism is a denylist, and that is a real limit, not a
+formality**: plugin configs are third-party schemas nobody here controls, so no
+list of key names can be complete, and a credential stored under an innocuous
+key still gets through. Redaction shrinks the blast radius; it does not make a
+snapshot provably clean. Say that to users rather than promising more.
+
+Keys survive redaction on purpose: a rule may need to know a password *is set*
+without knowing what it is — "MQTT configured with no TLS" is a finding someone
+will want. The promise constrains rules either way: a rule that needs a
+credential to reason is a rule that does not get written.
+`plugin/venus-raw-device-instance` reads `useDeviceNames` and
+`instanceMappings`, never a password, which is why redaction landed without
+narrowing what any rule can see.
+
+**A snapshot loaded from disk is reconciled at the boundary, not by rules.**
+`--snapshot` is the mode the architecture exists for, and it is the one input
+whose shape is not ours: it may predate a field the current rules read, or come
+from a newer release. `parseSnapshot` in `src/snapshot.ts` fills fields added
+since a capture was taken with `null` — which is already what "could not
+determine" means everywhere else, and an old capture is exactly one that could
+not determine them. This is not defensive decoration: `pluginConfig` arriving as
+`undefined` rather than `null` crashed `plugin/venus-raw-device-instance`, which
+guards correctly against `null`. A rule defending itself against malformed input
+is a rule doing the loader's job. A snapshot from a *newer* schema is refused
+outright rather than normalized, on the same grounds as everything else here —
+a verdict reached without seeing what the capture recorded is worse than no
+verdict.
 
 **Every finding carries `Evidence`: a dotted path into the snapshot and the
 value observed there.** Evidence is what separates a linter from a horoscope —
@@ -282,9 +299,9 @@ node dist/cli.js --config-dir ~/.signalk --save-snapshot snap.json
 ```
 
 `snapshot*.json` is gitignored. A snapshot carries a boat's configuration —
-treat one from someone else's vessel as theirs — and until the `pluginConfig`
-gap above is closed it can also carry plugin credentials, so check before
-sharing one rather than assuming it is safe.
+treat one from someone else's vessel as theirs. Credential-shaped values are
+redacted on capture, but that is a denylist (see above), so skim one before
+sharing rather than assuming it is clean.
 
 ## Releasing
 
