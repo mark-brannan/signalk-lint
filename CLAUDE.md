@@ -54,7 +54,11 @@ them contain judgement.
   a snapshot captured elsewhere. The second mode is the point of the
   architecture: someone can send you a snapshot of a boat you have never seen
   and you can run the full rule set against it on your laptop. Exit codes: 0 no
-  error findings, 1 at least one, 2 the tool itself crashed.
+  error findings, 1 at least one, 2 the check could not run at all — bad
+  arguments, or a config directory that isn't there. **1 and 2 must stay
+  distinct**: 1 is a verdict, 2 is the absence of one, and anything scripting
+  this tool has to be able to tell "your boat has a problem" from "I never
+  looked." CI pins the exact code for the missing-directory case.
 - **Webapp** (`public/index.html`) — reads `/findings` and `/snapshot`. Not
   covered by any build, test or format step in this repo.
 - **Library** — `src/index.ts` re-exports `collect`, `lint`, `rules` and the
