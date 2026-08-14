@@ -11,7 +11,7 @@ This file is what the codebase *is*; that one is how to work in it.
 
 Two stages, and the boundary between them is the whole design:
 
-```
+```text
 collect(...)            -> Snapshot     // the only code that performs I/O
 lint(snapshot, config)  -> LintResult   // pure, offline, deterministic
 ```
@@ -29,7 +29,7 @@ rules testable against JSON fixtures, and what makes the whole tool work at
 anchor with no internet — which is where boat problems actually get debugged.
 Break it once and none of the rest holds.
 
-```
+```text
 src/
   types.ts            Snapshot, Finding, Rule, Provenance -- the contracts
   collect/index.ts    the ONLY module that performs I/O; produces a Snapshot
@@ -200,8 +200,12 @@ Four things that are easy to get wrong:
   style by hand.
 - **`npm run lint:local` is not a code linter.** It builds and runs the CLI
   against a real Signal K installation — `$SIGNALK_NODE_CONFIG_DIR` if set,
-  otherwise `~/.signalk`, matching both the server's own environment variable and
-  the CLI's own default. It fails loudly if that path is missing:
+  otherwise `~/.signalk`. Both halves match signalk-server's own resolution in
+  `getConfigDirectory` (`src/config/config.ts`), which reads that variable and
+  falls back to `$HOME/.signalk`. Worth knowing if a config directory ever turns
+  up somewhere unexpected: upstream checks the **misspelled**
+  `SIGNALK_NODE_CONDFIG_DIR` first, ahead of the correctly spelled one, and it is
+  still there. It fails loudly if the path is missing:
   `assertConfigDir` in `src/config-dir.ts` validates the directory before
   anything reads it, because the collector's forgiving nulls would otherwise turn
   a wrong path into a clean run that exits 0. To point it at a config directory

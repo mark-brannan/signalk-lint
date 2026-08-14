@@ -7,6 +7,25 @@
 import { statSync } from 'node:fs'
 
 /**
+ * Why a config directory was rejected.
+ *
+ * A code rather than a message so that callers and tests can tell the two cases
+ * apart without matching on wording -- the same reason findings carry evidence
+ * paths instead of prose.
+ */
+export type ConfigDirErrorCode = 'missing' | 'not-a-directory'
+
+export class ConfigDirError extends Error {
+  constructor(
+    readonly code: ConfigDirErrorCode,
+    message: string
+  ) {
+    super(message)
+    this.name = 'ConfigDirError'
+  }
+}
+
+/**
  * A config directory the user named is a boundary, so it is validated before
  * anything reads it rather than left to the collector.
  *
@@ -22,12 +41,13 @@ export function assertConfigDir(configDir: string): void {
   try {
     isDirectory = statSync(configDir).isDirectory()
   } catch {
-    throw new Error(
+    throw new ConfigDirError(
+      'missing',
       `Config directory not found: ${configDir}\n` +
         'Pass --config-dir <path>, or --snapshot <file> to lint a captured snapshot.'
     )
   }
   if (!isDirectory) {
-    throw new Error(`Not a directory: ${configDir}`)
+    throw new ConfigDirError('not-a-directory', `Not a directory: ${configDir}`)
   }
 }

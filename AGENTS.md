@@ -93,8 +93,15 @@ it did.
 ## Tests
 
 All new code needs tests. Assert behaviour — findings, severities, evidence
-paths, evidence values, exit codes — never display strings. Titles and `detail`
-text will be rewritten; a test that pins their wording just breaks.
+paths, evidence values, exit codes, error codes — never prose. A finding's
+`title` and `detail`, and the text of an error message, all get rewritten; a
+test that pins their wording breaks for a reason that is not a regression.
+
+The corollary is a design obligation, not just a testing one: **when code has
+two failure modes a caller should be able to tell apart, the distinction has to
+live somewhere other than the message.** `ConfigDirError` in
+`src/config-dir.ts` carries a `code` for exactly this reason, so its tests
+assert `'missing'` versus `'not-a-directory'` rather than matching English.
 
 - **A rule's test data is a fixture file**, a whole `Snapshot` under
   `test/fixtures/`, not an object built inline. Fixtures are readable by someone
