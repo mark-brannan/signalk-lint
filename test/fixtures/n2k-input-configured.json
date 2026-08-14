@@ -1,0 +1,68 @@
+{
+  "schemaVersion": 1,
+  "capturedAt": "2026-08-01T00:00:00.000Z",
+  "source": {
+    "kind": "fixture"
+  },
+  "server": {
+    "version": "2.30.0",
+    "settings": {
+      "port": 3000,
+      "ssl": false,
+      "mdns": true,
+      "pipedProviders": [
+        {
+          "id": "n2k-can0",
+          "enabled": true,
+          "pipeElements": [
+            {
+              "type": "providers/simple",
+              "options": {
+                "logging": false,
+                "type": "NMEA2000",
+                "subOptions": {
+                  "type": "canbus-canboatjs",
+                  "interface": "can0",
+                  "uniqueNumber": 123456
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "security": {
+      "configured": true,
+      "allowReadonly": false,
+      "userCount": 1,
+      "deviceCount": 0,
+      "allowNewUserRegistration": false,
+      "allowDeviceAccessRequests": true
+    },
+    "sourcePriorities": {},
+    "system": {
+      "nodeVersion": "v22.11.0",
+      "platform": "linux",
+      "arch": "arm64",
+      "totalMemMB": 3958,
+      "disk": {
+        "totalMB": 29820,
+        "usedMB": 11203,
+        "usedPercent": 37.6
+      },
+      "hasRTC": true
+    },
+    "pluginConfig": {
+      "signalk-fixed-position": {
+        "configuration": {
+          "interval": 15,
+          "position": {
+            "latitude": 47.6,
+            "longitude": -122.4
+          }
+        },
+        "enabled": true
+      }
+    }
+  }
+}
