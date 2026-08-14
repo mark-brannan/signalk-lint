@@ -184,11 +184,13 @@ Four things that are easy to get wrong:
   `public/index.html` is neither formatted nor checked; match the surrounding
   style by hand.
 - **`npm run lint:local` is not a code linter.** It builds and runs the CLI
-  against a real Signal K config directory (`$HOME/symphony/signalk`), so it only
-  means anything on a machine that has one. It fails loudly if that path is
-  missing — `assertConfigDir` in `src/config-dir.ts` validates the directory
-  before anything reads it, because the collector's forgiving nulls would
-  otherwise turn a wrong path into a clean run that exits 0.
+  against a real Signal K installation — `$SIGNALK_NODE_CONFIG_DIR` if set,
+  otherwise `~/.signalk`, matching both the server's own environment variable and
+  the CLI's own default. It fails loudly if that path is missing:
+  `assertConfigDir` in `src/config-dir.ts` validates the directory before
+  anything reads it, because the collector's forgiving nulls would otherwise turn
+  a wrong path into a clean run that exits 0. To point it at a config directory
+  that mirrors a real boat, set the variable rather than editing the script.
 - **The fastest way to exercise a change end to end is a fixture, not a
   server:** `node dist/cli.js --snapshot test/fixtures/vulnerable-server.json`.
   CI does exactly this as a smoke test, asserting a non-zero exit, to catch the
