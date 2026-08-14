@@ -12,13 +12,21 @@ import { allowReadonlyNonLoopback } from './allow-readonly-non-loopback.js'
 import { unstableSerialDevicePath } from './unstable-serial-device-path.js'
 import { noRealtimeClock } from './no-realtime-clock.js'
 import { venusRawDeviceInstance } from './venus-raw-device-instance.js'
+import { btSensorsScanStarvation } from './bt-sensors-scan-starvation.js'
+import { alarmPathDead } from './alarm-path-dead.js'
+import { noDataConnections } from './no-data-connections.js'
+import { fallbackIsPrimary } from './fallback-is-primary.js'
 
 export const rules: readonly Rule[] = [
   serverVersionAdvisories,
   allowReadonlyNonLoopback,
   unstableSerialDevicePath,
   noRealtimeClock,
-  venusRawDeviceInstance
+  venusRawDeviceInstance,
+  btSensorsScanStarvation,
+  alarmPathDead,
+  noDataConnections,
+  fallbackIsPrimary
 ]
 
 export {
@@ -26,5 +34,9 @@ export {
   allowReadonlyNonLoopback,
   unstableSerialDevicePath,
   noRealtimeClock,
-  venusRawDeviceInstance
+  venusRawDeviceInstance,
+  btSensorsScanStarvation,
+  alarmPathDead,
+  noDataConnections,
+  fallbackIsPrimary
 }

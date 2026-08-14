@@ -12,7 +12,27 @@
       "mdns": true,
       "server": {
         "listen": "0.0.0.0"
-      }
+      },
+      "pipedProviders": [
+        {
+          "id": "n2k-can0",
+          "enabled": true,
+          "pipeElements": [
+            {
+              "type": "providers/simple",
+              "options": {
+                "logging": false,
+                "type": "NMEA2000",
+                "subOptions": {
+                  "type": "canbus-canboatjs",
+                  "interface": "can0",
+                  "uniqueNumber": 123456
+                }
+              }
+            }
+          ]
+        }
+      ]
     },
     "security": {
       "configured": true,

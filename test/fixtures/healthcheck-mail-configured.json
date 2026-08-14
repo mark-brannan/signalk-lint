@@ -5,14 +5,11 @@
     "kind": "fixture"
   },
   "server": {
-    "version": null,
+    "version": "2.30.0",
     "settings": {
       "port": 3000,
       "ssl": false,
       "mdns": true,
-      "server": {
-        "listen": "0.0.0.0"
-      },
       "pipedProviders": [
         {
           "id": "n2k-can0",
@@ -36,7 +33,7 @@
     },
     "security": {
       "configured": true,
-      "allowReadonly": true,
+      "allowReadonly": false,
       "userCount": 1,
       "deviceCount": 0,
       "allowNewUserRegistration": false,
@@ -55,6 +52,45 @@
       },
       "hasRTC": true
     },
-    "pluginConfig": null
+    "pluginConfig": {
+      "signalk-healthcheck": {
+        "configuration": {
+          "host": {
+            "enabled": true,
+            "cpuWarning": 80,
+            "cpuAlarm": 90,
+            "memWarning": 20,
+            "memAlarm": 10,
+            "diskWarning": 20,
+            "diskAlarm": 10,
+            "checkFrequency": 60,
+            "checkMaxAttempts": 3,
+            "sendNotification": true,
+            "sendEmail": true,
+            "toEmail": "skipper@example.com"
+          },
+          "providers": {
+            "OpenPlotter GPSD": {
+              "enabled": true,
+              "deltaWarning": 1,
+              "deltaAlarm": 1,
+              "checkFrequency": 60,
+              "checkMaxAttempts": 3,
+              "sendNotification": false,
+              "sendEmail": false
+            }
+          },
+          "mail": {
+            "host": "smtp.example.com",
+            "port": 587,
+            "secure": false,
+            "username": "captain",
+            "password": "REDACTED",
+            "fromEmail": "signalk@example.com"
+          }
+        },
+        "enabled": true
+      }
+    }
   }
 }

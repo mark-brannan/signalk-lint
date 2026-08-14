@@ -14,24 +14,18 @@
  *
  * Verified against @signalk/streams' serialport.js: the field is
  * `options.device` on a `providers/serialport` pipe element, nested inside
- * settings.pipedProviders[].pipeElements[].
+ * settings.pipedProviders[].pipeElements[]. That field is read through the
+ * shared helper in piped-providers.ts, which every rule reasoning about
+ * connections goes through -- so they agree on what a provider is, and none
+ * of them can be the one that crashes the run on a malformed entry.
  *
  * Provenance: convention. This isn't in the Signal K spec -- it's a Linux
  * udev fact that repeatedly bites people wiring up NMEA 0183 over USB.
  */
 import { Rule, RuleFinding, Snapshot } from '../types.js'
+import { pipedProvidersOf } from './piped-providers.js'
 
 const UNSTABLE_PATTERN = /^\/dev\/tty(USB|ACM)\d+$/
-
-interface PipeElement {
-  type?: string
-  options?: { device?: string }
-}
-
-interface PipedProvider {
-  id?: string
-  pipeElements?: PipeElement[]
-}
 
 export const unstableSerialDevicePath: Rule = {
   id: 'hardware/unstable-serial-device-path',
@@ -41,11 +35,13 @@ export const unstableSerialDevicePath: Rule = {
   provenance: 'convention',
 
   evaluate(snapshot: Snapshot): RuleFinding[] {
-    const settings = snapshot.server.settings
-    if (settings === null) return []
-
-    const providers = settings.pipedProviders as PipedProvider[] | undefined
-    if (!Array.isArray(providers)) return []
+    // Shared with the other rules that read this field. It validates every
+    // entry before handing it back, which matters here: this rule used to
+    // parse pipedProviders through its own un-validated interfaces, and a
+    // null entry threw -- taking down every other rule's findings with it,
+    // because lint() evaluates the whole set in one pass.
+    const providers = pipedProvidersOf(snapshot)
+    if (providers === null) return []
 
     const findings: RuleFinding[] = []
 
@@ -59,7 +55,8 @@ export const unstableSerialDevicePath: Rule = {
         if (typeof device !== 'string') continue
         if (!UNSTABLE_PATTERN.test(device)) continue
 
-        const providerId = provider.id ?? '(unnamed connection)'
+        const providerId =
+          typeof provider.id === 'string' ? provider.id : '(unnamed connection)'
         findings.push({
           title: `Connection "${providerId}" uses a device path that can change: ${device}`,
           detail:

@@ -5,38 +5,16 @@
     "kind": "fixture"
   },
   "server": {
-    "version": null,
+    "version": "2.30.0",
     "settings": {
       "port": 3000,
       "ssl": false,
       "mdns": true,
-      "server": {
-        "listen": "0.0.0.0"
-      },
-      "pipedProviders": [
-        {
-          "id": "n2k-can0",
-          "enabled": true,
-          "pipeElements": [
-            {
-              "type": "providers/simple",
-              "options": {
-                "logging": false,
-                "type": "NMEA2000",
-                "subOptions": {
-                  "type": "canbus-canboatjs",
-                  "interface": "can0",
-                  "uniqueNumber": 123456
-                }
-              }
-            }
-          ]
-        }
-      ]
+      "pipedProviders": []
     },
     "security": {
       "configured": true,
-      "allowReadonly": true,
+      "allowReadonly": false,
       "userCount": 1,
       "deviceCount": 0,
       "allowNewUserRegistration": false,
@@ -55,6 +33,17 @@
       },
       "hasRTC": true
     },
-    "pluginConfig": null
+    "pluginConfig": {
+      "signalk-fixed-position": {
+        "configuration": {
+          "interval": 15,
+          "position": {
+            "latitude": 47.6,
+            "longitude": -122.4
+          }
+        },
+        "enabled": true
+      }
+    }
   }
 }
