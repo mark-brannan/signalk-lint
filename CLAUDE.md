@@ -61,8 +61,10 @@ them contain judgement.
   looked." CI pins the exact code for the missing-directory case.
 - **Webapp** (`public/index.html`) — reads `/findings` and `/snapshot`. Not
   covered by any build, test or format step in this repo.
-- **Library** — `src/index.ts` re-exports `collect`, `lint`, `rules` and the
-  types so other packages can consume the engine without the plugin.
+- **Library** — `src/index.ts` re-exports `collect`, `lint`, `hasErrors`,
+  `PRESETS`, `rules` and the types, so other packages can consume the engine
+  without going through the plugin. `package.json` also publishes `./rules` and
+  `./types` as subpath exports.
 
 ## Non-obvious constraints
 
