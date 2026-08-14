@@ -35,6 +35,11 @@ import { Snapshot } from '../types.js'
 export interface PipeElementOptions {
   /** Protocol: "NMEA2000", "NMEA0183", "SignalK", "FileStream". */
   type?: string
+  /**
+   * Serial device path, on a `providers/serialport` pipe element. Verified
+   * against @signalk/streams' serialport.js.
+   */
+  device?: string
   /** Transport beneath the protocol, e.g. { type: "canbus-canboatjs" }. */
   subOptions?: { type?: string }
 }
