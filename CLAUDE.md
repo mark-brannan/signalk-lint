@@ -13,8 +13,14 @@ Two stages, and the boundary between them is the whole design:
 
 ```
 collect(...)            -> Snapshot     // the only code that performs I/O
-lint(snapshot, config)  -> Finding[]    // pure, offline, deterministic
+lint(snapshot, config)  -> LintResult   // pure, offline, deterministic
 ```
+
+`LintResult` carries the `findings`, the `snapshot` they were derived from, and
+the ids of rules `skipped` because they were configured `off` — a finding is
+never handed over without the evidence base it came from. Individual rules
+return `RuleFinding[]`; `lint()` stamps on the rule id, provenance, schema
+version and resolved severity.
 
 **A rule is a pure function of a `Snapshot`.** No I/O, no clock, no randomness,
 no network, no live server. If a rule needs to know something, that something
