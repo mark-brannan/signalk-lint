@@ -16,6 +16,7 @@ import { btSensorsScanStarvation } from './bt-sensors-scan-starvation.js'
 import { alarmPathDead } from './alarm-path-dead.js'
 import { noDataConnections } from './no-data-connections.js'
 import { fallbackIsPrimary } from './fallback-is-primary.js'
+import { notificationConsumerDisabled } from './notification-consumer-disabled.js'
 
 export const rules: readonly Rule[] = [
   serverVersionAdvisories,
@@ -26,7 +27,8 @@ export const rules: readonly Rule[] = [
   btSensorsScanStarvation,
   alarmPathDead,
   noDataConnections,
-  fallbackIsPrimary
+  fallbackIsPrimary,
+  notificationConsumerDisabled
 ]
 
 export {
@@ -38,5 +40,6 @@ export {
   btSensorsScanStarvation,
   alarmPathDead,
   noDataConnections,
-  fallbackIsPrimary
+  fallbackIsPrimary,
+  notificationConsumerDisabled
 }
