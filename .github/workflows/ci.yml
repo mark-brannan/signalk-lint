@@ -3,8 +3,12 @@ name: CI
 on:
   push:
     branches: [main]
+  # Every pull request, whatever it targets. Restricting this to `main` meant a
+  # PR stacked on another PR's branch got no CI at all -- no build, no tests, no
+  # smoke check -- and the gap is invisible: the checks aren't red, they simply
+  # aren't there. A change is worth testing on its own merits, not on the merits
+  # of the branch it happens to be aimed at.
   pull_request:
-    branches: [main]
 
 permissions:
   contents: read
