@@ -236,9 +236,13 @@ npm ci && npm run format:check && npm run build && npm test
 That is every CI check that can fail on your code, in CI's order — run it before
 pushing and a red build is a surprise rather than the norm. CI then adds one
 step this does not: an end-to-end smoke test of the built CLI, covered below.
-Fast and fully offline: 50 tests in well
-under a second, and nothing here needs a running Signal K server, a network, or
-a boat.
+Fast and fully offline: the whole suite
+runs in well under a second, and nothing here needs a running Signal K server, a
+network, or a boat. (No test count here on purpose — it went stale twice in this
+file's first day, once when rules landed on main and once from a test added
+three commits later. A number nobody can keep current is worse than the shape of
+the claim, which is what actually matters: if the suite ever needs a server or a
+minute, something has gone wrong.)
 
 There is no ESLint in this repo. "Lint the code" means `npm run format:check`
 plus `npm run build` (`tsc`) — the same two commands, which CI runs on both Node
