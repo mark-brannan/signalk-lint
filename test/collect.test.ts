@@ -189,6 +189,34 @@ describe('plugin config redaction', () => {
     ])
   })
 
+  it('redacts authorization-style credentials, not just passwords', async () => {
+    // Named explicitly because these were the misses: the first denylist
+    // matched `authToken` but not `authorization`, and nothing covered a
+    // bearer token, a JWT or a cloud access key.
+    const snapshot = await snapshotWithPluginConfig({
+      'x.json': {
+        configuration: {
+          authorization: 'Bearer AUTH-SECRET',
+          bearer: 'BEARER-SECRET',
+          jwt: 'JWT-SECRET',
+          accessKeyId: 'AKIA-SECRET',
+          pem: '-----BEGIN PRIVATE KEY-----PEM-SECRET'
+        }
+      }
+    })
+    const serialized = JSON.stringify(snapshot)
+
+    for (const secret of [
+      'AUTH-SECRET',
+      'BEARER-SECRET',
+      'JWT-SECRET',
+      'AKIA-SECRET',
+      'PEM-SECRET'
+    ]) {
+      expect(serialized).not.toContain(secret)
+    }
+  })
+
   it('leaves marine and generic config alone', async () => {
     // The opposite failure to a missed secret, and the more likely one on a
     // boat: substring matching would redact compass (heading calibration) and
