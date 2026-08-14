@@ -16,6 +16,7 @@ import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { homedir } from 'node:os'
 import { assertConfigDir } from './config-dir.js'
+import { parseSnapshot } from './snapshot.js'
 import { collect } from './collect/index.js'
 import { hasErrors, lint } from './lint.js'
 import { rules } from './rules/index.js'
@@ -193,7 +194,7 @@ async function main(): Promise<number> {
 
   let snapshot: Snapshot
   if (args.snapshot) {
-    snapshot = JSON.parse(await readFile(args.snapshot, 'utf8')) as Snapshot
+    snapshot = parseSnapshot(await readFile(args.snapshot, 'utf8'))
   } else {
     assertConfigDir(args.configDir)
     const serverVersion =
