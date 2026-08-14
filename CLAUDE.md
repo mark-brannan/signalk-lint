@@ -171,14 +171,17 @@ runs it. Comments explain *why*, not what.
 ## Local development
 
 ```shell
-npm ci && npm run build && npm test
+npm ci && npm run format:check && npm run build && npm test
 ```
 
-Fast and fully offline — 30 tests in well under a second. Nothing here needs a
-running Signal K server, a network, or a boat.
+That is the whole CI gate, in CI's order — run it before pushing and a red build
+is a surprise rather than the norm. Fast and fully offline: 30 tests in well
+under a second, and nothing here needs a running Signal K server, a network, or
+a boat.
 
 There is no ESLint in this repo. "Lint the code" means `npm run format:check`
-plus `npm run build` (`tsc`), which is exactly what CI runs, on Node 22 and 24.
+plus `npm run build` (`tsc`) — the same two commands, which CI runs on both Node
+22 and 24. `npm run format` fixes what `format:check` reports.
 
 Four things that are easy to get wrong:
 
