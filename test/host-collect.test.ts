@@ -128,6 +128,30 @@ describe('collectHostFacts()', () => {
     expect(JSON.stringify(lines)).not.toContain('hunter2')
   })
 
+  it('does not let a systemd-escaped space or quote inside a value leak its tail', async () => {
+    // systemd.syntax(7): a backslash escapes the next character, inside or
+    // outside quotes -- an escaped space does not end the assignment, and an
+    // escaped quote does not close it early. A tokenizer that didn't know
+    // that treated the escape as the token's real boundary and left
+    // everything after it -- the rest of the secret -- as a separate,
+    // unredacted token.
+    const root = await fakeRoot({
+      'etc/systemd/system/signalk.service.d/override.conf':
+        '[Service]\n' +
+        'Environment=API_TOKEN=first\\ second\n' +
+        'Environment=API_TOKEN="first\\"second"\n'
+    })
+    const facts = await collectHostFacts(opts(root))
+    const lines = facts!.systemdDropins![0]!.lines
+    expect(lines).toEqual([
+      '[Service]',
+      'Environment=API_TOKEN=[redacted]',
+      'Environment=API_TOKEN="[redacted]"',
+      ''
+    ])
+    expect(JSON.stringify(lines)).not.toContain('second')
+  })
+
   it('collects cron tables and redacts credential-shaped assignments', async () => {
     const root = await fakeRoot({
       'etc/crontab': 'MQTT_PASSWORD=hunter2\n0 3 * * * root /sbin/reboot\n',

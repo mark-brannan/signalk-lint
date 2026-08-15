@@ -97,37 +97,91 @@ export function redactSecrets(value: unknown): unknown {
 }
 
 /**
- * systemd's `Environment=` takes a space-separated *list* of assignments
- * (systemd.exec(5)): `Environment="A=1" B=2 C="spaced value"`. Each entry is
- * either the whole `NAME=value` wrapped in one layer of matching quotes, or
- * bare/unquoted with its value optionally quoted on its own (`NAME="value"`).
- * Matched with `.replace` rather than a full tokenizer so that anything
- * between and around assignments -- spacing, entries this pattern doesn't
- * recognize -- passes through untouched; only a matched, credential-named
- * assignment is rewritten.
+ * Split systemd's `Environment=`-style assignment list into tokens, one
+ * whitespace-delimited item at a time (systemd.exec(5), systemd.syntax(7)):
+ * an item may be wrapped in one layer of matching `"..."` or `'...'` quotes,
+ * and a backslash escapes the character after it, inside or outside quotes.
+ *
+ * This does not interpret those escapes -- it never turns `\s` into a space
+ * or strips a quote's own backslash -- it only has to not end a token early
+ * on a character that was escaped. Getting that wrong is exactly how the
+ * previous version of this function leaked a credential: an escaped space or
+ * an escaped quote inside a value looked like the token's real boundary, so
+ * everything after it was scanned as a separate, unredacted token.
  */
-const NESTED_ASSIGNMENT =
-  /"([A-Za-z_][A-Za-z0-9_]*)=([^"]*)"|'([A-Za-z_][A-Za-z0-9_]*)=([^']*)'|([A-Za-z_][A-Za-z0-9_]*)=("[^"]*"|'[^']*'|\S*)/g
-
-function redactNestedAssignments(text: string): string {
-  return text.replace(
-    NESTED_ASSIGNMENT,
-    (whole, dqName, _dqValue, sqName, _sqValue, bareName, bareValue) => {
-      if (dqName !== undefined) {
-        return namesCredential(dqName) ? `"${dqName}=${REDACTED}"` : whole
+function tokenizeAssignments(text: string): string[] {
+  const tokens: string[] = []
+  const n = text.length
+  let i = 0
+  while (i < n) {
+    while (i < n && /\s/.test(text[i]!)) i++
+    if (i >= n) break
+    let token = ''
+    while (i < n && !/\s/.test(text[i]!)) {
+      const ch = text[i]!
+      if (ch === '\\' && i + 1 < n) {
+        token += text.slice(i, i + 2)
+        i += 2
+      } else if (ch === '"' || ch === "'") {
+        let j = i + 1
+        while (j < n && text[j] !== ch) {
+          j += text[j] === '\\' && j + 1 < n ? 2 : 1
+        }
+        j = Math.min(j + 1, n) // include the closing quote, if one was found
+        token += text.slice(i, j)
+        i = j
+      } else {
+        token += ch
+        i++
       }
-      if (sqName !== undefined) {
-        return namesCredential(sqName) ? `'${sqName}=${REDACTED}'` : whole
-      }
-      if (!namesCredential(bareName)) return whole
-      const bareQuote =
-        (bareValue[0] === '"' || bareValue[0] === "'") &&
-        bareValue.endsWith(bareValue[0])
-          ? bareValue[0]
-          : ''
-      return `${bareName}=${bareQuote}${REDACTED}${bareQuote}`
     }
-  )
+    tokens.push(token)
+  }
+  return tokens
+}
+
+/** One layer of matching quotes around `token`, or '' if it isn't quoted. */
+function quoteOf(token: string): '"' | "'" | '' {
+  const first = token[0]
+  return (first === '"' || first === "'") &&
+    token.length >= 2 &&
+    token.endsWith(first)
+    ? first
+    : ''
+}
+
+function redactToken(token: string): string {
+  const quote = quoteOf(token)
+  const body = quote ? token.slice(1, -1) : token
+
+  // Whole-assignment quoting ("NAME=value") and value-only quoting
+  // (NAME="value") both end up here as NAME=<rest>; [\s\S] rather than `.`
+  // because a value can itself contain the systemd-escaped newlines this
+  // parser is not trying to interpret.
+  const assignment = /^([A-Za-z_][A-Za-z0-9_]*)=([\s\S]*)$/.exec(body)
+  if (!assignment) return token
+  const [, name, value] = assignment
+  if (!namesCredential(name)) return token
+
+  const valueQuote = quoteOf(value)
+  return `${quote}${name}=${valueQuote}${REDACTED}${valueQuote}${quote}`
+}
+
+/**
+ * Redacts every credential-named assignment in a systemd `Environment=`-style
+ * list, preserving everything else -- spacing, other assignments -- as-is.
+ * Returns `text` unchanged (same reference) when nothing needed redacting,
+ * so a caller can tell "nothing matched" from "this token happened to
+ * already read the same" without re-scanning.
+ */
+function redactNestedAssignments(text: string): string {
+  let changed = false
+  const tokens = tokenizeAssignments(text).map((token) => {
+    const redacted = redactToken(token)
+    if (redacted !== token) changed = true
+    return redacted
+  })
+  return changed ? tokens.join(' ') : text
 }
 
 /**
