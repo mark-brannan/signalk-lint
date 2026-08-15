@@ -1,11 +1,16 @@
 name: Publish
 
-# Runs on version tags only (v0.1.0, v0.2.0, ...). Nothing publishes on a
-# plain push to main -- a tag is a deliberate release act.
+# Runs on version tags (v0.1.0, v0.2.0, ...), pushed by a human, or via
+# workflow_dispatch. Nothing publishes on a plain push to main -- a tag is
+# still a deliberate release act, it just doesn't have to be pushed by hand:
+# auto-version.yml tags a version-bumped main and dispatches this workflow,
+# because a tag it pushes with the default GITHUB_TOKEN would not trigger
+# the `push: tags` listener below (GitHub's own loop-prevention).
 on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
 
 permissions:
   contents: read

@@ -305,10 +305,21 @@ sharing rather than assuming it is clean.
 
 ## Releasing
 
-Tag `vX.Y.Z` and push. `.github/workflows/publish.yml` runs on version tags
-only, verifies the tag matches `package.json`, and publishes via npm OIDC
-trusted publishing — no npm token exists on any developer machine. Nothing
-publishes on a plain push to `main`.
+Version bumps are manual: edit `package.json`'s `version` and push to `main`.
+Tagging and publishing are not — `.github/workflows/auto-version.yml` runs on
+every push to `main`, tags `vX.Y.Z` if that version isn't tagged yet, and
+dispatches `publish.yml`, which verifies the tag matches `package.json`,
+builds, tests, and publishes via npm OIDC trusted publishing — no npm token
+exists on any developer machine or in CI. A push to `main` that doesn't change
+`version` tags nothing and publishes nothing.
 
-Version bumps are manual here: edit `package.json`, then tag to match. There is
-no auto-version hook and no `CHANGELOG.md`.
+`auto-version.yml` dispatches `publish.yml` via `workflow_dispatch` rather than
+relying on its own tag push to trigger `publish.yml`'s `push: tags` listener:
+a tag pushed with the default `GITHUB_TOKEN` doesn't trigger other workflows
+(GitHub's own loop-prevention), so `publish.yml` also listens for
+`workflow_dispatch` and treats the two triggers identically. A human can still
+tag and push by hand — `publish.yml`'s tag-push listener is unchanged — the
+automatic path exists so pushing the version bump to `main` is sufficient.
+
+There is no auto-bump hook and no `CHANGELOG.md`: the version number itself
+still has to be moved by hand before any of the above fires.
