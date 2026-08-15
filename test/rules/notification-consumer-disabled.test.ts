@@ -74,6 +74,16 @@ describe('plugin/notification-consumer-disabled', () => {
     expect(rule.evaluate(snapshot)).toEqual([])
   })
 
+  it('does not fire on a consumer whose config carries no enabled key', () => {
+    // Not running, but not switched off either -- and there is no `false` in
+    // the snapshot to cite for it.
+    const snapshot = fixture('notification-consumers-disabled')
+    const plugins = pluginsOf(snapshot)
+    delete plugins['signalk-gpio-beeper-plugin']
+    delete plugins['signalk-notification-player'].enabled
+    expect(rule.evaluate(snapshot)).toEqual([])
+  })
+
   it('does not fire when nothing is raising notifications', () => {
     const snapshot = fixture('notification-consumers-disabled')
     pluginsOf(snapshot)['signalk-doctor'].configuration!.publishNotifications =

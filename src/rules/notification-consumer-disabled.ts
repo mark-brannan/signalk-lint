@@ -69,8 +69,8 @@ function asRecord(value: unknown): Record<string, unknown> | null {
 }
 
 /**
- * signalk-healthcheck (id "signalk-healthcheck"), verified against index.js
- * 1.1.1: `hostCheck` publishes `notifications.host.<check>.<field>` under
+ * signalk-healthcheck (id "signalk-healthcheck", PLUGIN_ID at index.js:5,
+ * assigned to `plugin.id` at :22), verified against 1.1.1: `hostCheck` publishes `notifications.host.<check>.<field>` under
  * `if (hcOptions.host.sendNotification)` (:564, paths built at :497), and
  * `providerCheck` publishes `notifications.provider.<id>.deltaRate` under
  * `if (provider.sendNotification)` (:602, path at :531). The host check itself
@@ -185,7 +185,12 @@ export const notificationConsumerDisabled: Rule = {
       // tablet. Only an installed-then-switched-off consumer is evidence.
       if (entry === null) continue
       if (isOn(entry.enabled)) return []
-      disabled.push(consumer)
+      // Explicitly false, not merely un-true. A config file with no `enabled`
+      // key does mean the plugin is not running (signalk-server starts a
+      // plugin only on a truthy `enabled`), but it is not somebody having
+      // turned it off -- and citing `value: false` for a key the snapshot does
+      // not contain would be evidence that does not resolve.
+      if (entry.enabled === false) disabled.push(consumer)
     }
 
     if (disabled.length === 0) return []
