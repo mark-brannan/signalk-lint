@@ -40,8 +40,13 @@ export interface PipeElementOptions {
    * against @signalk/streams' serialport.js.
    */
   device?: string
-  /** Transport beneath the protocol, e.g. { type: "canbus-canboatjs" }. */
-  subOptions?: { type?: string }
+  /**
+   * Transport beneath the protocol, e.g. { type: "canbus-canboatjs",
+   * interface: "can0" }. `interface` names the CAN interface for canbus
+   * transports, verified against the same live settings.json as the shape
+   * above.
+   */
+  subOptions?: { type?: string; interface?: string }
 }
 
 export interface PipeElement {

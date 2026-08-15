@@ -215,6 +215,18 @@ async function main(): Promise<number> {
       : format(result.findings, result.snapshot)
   )
 
+  // A check that did not happen must be visible: a clean report that silently
+  // omitted the host rules reads as "the host is fine", which this capture
+  // cannot support.
+  if (!args.json && result.unevaluated.length > 0) {
+    for (const entry of result.unevaluated) {
+      process.stdout.write(
+        `note: ${entry.ruleId} did not run -- this capture has no ` +
+          `${entry.missing.join(', ')}\n`
+      )
+    }
+  }
+
   return hasErrors(result) ? 1 : 0
 }
 

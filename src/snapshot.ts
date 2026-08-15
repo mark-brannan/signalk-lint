@@ -46,6 +46,10 @@ function normalize(
     // `--snapshot old.json --save-snapshot new.json` otherwise writes a file
     // claiming a version whose shape it no longer has.
     schemaVersion: SNAPSHOT_SCHEMA_VERSION,
+    // A pre-v3 capture could not have looked at the host, and null is what
+    // "could not look" means -- lint() then skips host rules visibly rather
+    // than running them against facts the capture never held.
+    host: raw.host ?? null,
     server: {
       ...server,
       pluginConfig: server.pluginConfig ?? null,

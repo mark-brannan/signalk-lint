@@ -1,0 +1,52 @@
+{
+  "schemaVersion": 3,
+  "capturedAt": "2026-08-14T10:00:00.000Z",
+  "source": {
+    "kind": "fixture"
+  },
+  "server": {
+    "version": "2.30.0",
+    "settings": {
+      "port": 3000,
+      "pipedProviders": [null, 42, { "pipeElements": "nope" }]
+    },
+    "security": {
+      "configured": false,
+      "allowReadonly": null,
+      "userCount": null,
+      "deviceCount": null,
+      "allowNewUserRegistration": null,
+      "allowDeviceAccessRequests": null
+    },
+    "sourcePriorities": null,
+    "system": {
+      "nodeVersion": "v22.11.0",
+      "platform": "linux",
+      "arch": "arm64",
+      "totalMemMB": 3958,
+      "disk": null,
+      "hasRTC": false
+    },
+    "pluginConfig": null
+  },
+  "host": {
+    "network": [null, 42, { "name": 7, "up": "yes" }, { "type": 280 }],
+    "gpsd": { "file": 12, "devices": "nope" },
+    "systemdDropins": [{ "unit": true, "lines": 12 }, "x"],
+    "cron": [{ "file": "/etc/crontab", "lines": [3, null, "0 3 * * * root reboot"] }],
+    "autostart": ["zzz", { "file": null }],
+    "drm": [{ "connector": true, "status": 9 }, null],
+    "time": { "ntp": "maybe", "ntpSynchronized": "no" },
+    "watchdog": {
+      "runtimeWatchdogRaw": 10,
+      "runtimeWatchdogSec": "ten",
+      "devices": { "watchdog0": 15 }
+    },
+    "journald": {
+      "storage": ["persistent"],
+      "systemMaxUse": {},
+      "persistentJournalDir": "yes",
+      "files": "none"
+    }
+  }
+}

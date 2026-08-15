@@ -135,7 +135,11 @@ export default function (app: ServerAPI): Plugin {
           res.status(503).json({ error: 'no lint run has completed yet' })
           return
         }
-        res.json({ findings: latest.findings, skipped: latest.skipped })
+        res.json({
+          findings: latest.findings,
+          skipped: latest.skipped,
+          unevaluated: latest.unevaluated
+        })
       })
 
       router.get('/snapshot', (_req, res) => {

@@ -1,0 +1,78 @@
+{
+  "schemaVersion": 3,
+  "capturedAt": "2026-08-14T10:00:00.000Z",
+  "source": {
+    "kind": "fixture"
+  },
+  "server": {
+    "version": "2.30.0",
+    "settings": {
+      "port": 3000,
+      "ssl": false,
+      "mdns": true,
+      "pipedProviders": []
+    },
+    "security": {
+      "configured": true,
+      "allowReadonly": false,
+      "userCount": 1,
+      "deviceCount": 0,
+      "allowNewUserRegistration": false,
+      "allowDeviceAccessRequests": true
+    },
+    "sourcePriorities": {},
+    "system": {
+      "nodeVersion": "v22.11.0",
+      "platform": "linux",
+      "arch": "arm64",
+      "totalMemMB": 3958,
+      "disk": {
+        "totalMB": 29820,
+        "usedMB": 11203,
+        "usedPercent": 37.6
+      },
+      "hasRTC": false
+    },
+    "pluginConfig": {}
+  },
+  "host": {
+    "network": [
+      { "name": "can0", "type": 280, "up": true, "operstate": "unknown" },
+      { "name": "eth0", "type": 1, "up": true, "operstate": "up" },
+      { "name": "lo", "type": 772, "up": true, "operstate": "unknown" },
+      { "name": "wlan0", "type": 1, "up": true, "operstate": "up" }
+    ],
+    "gpsd": null,
+    "systemdDropins": [],
+    "cron": [
+      {
+        "file": "/etc/crontab",
+        "lines": [
+          "SHELL=/bin/sh",
+          "17 * * * * root cd / && run-parts --report /etc/cron.hourly",
+          ""
+        ]
+      }
+    ],
+    "autostart": [],
+    "drm": [
+      { "connector": "card1-HDMI-A-1", "status": "connected" },
+      { "connector": "card1-HDMI-A-2", "status": "disconnected" }
+    ],
+    "time": {
+      "ntp": true,
+      "ntpSynchronized": false
+    },
+    "watchdog": {
+      "runtimeWatchdogRaw": "0",
+      "runtimeWatchdogSec": 0,
+      "devices": [{ "name": "watchdog0", "timeoutSec": 15 }]
+    },
+    "journald": {
+      "storage": null,
+      "systemMaxUse": null,
+      "persistentJournalDir": false,
+      "files": ["/etc/systemd/journald.conf"]
+    }
+  }
+}

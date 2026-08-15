@@ -32,6 +32,9 @@ describe('parseSnapshot()', () => {
 
     expect(snapshot.server.pluginConfig).toBeNull()
     expect(snapshot.server.system.hasRTC).toBeNull()
+    // A pre-v3 capture never looked at the host; null is what makes lint()
+    // skip host rules visibly instead of running them on absent facts.
+    expect(snapshot.host).toBeNull()
     // Resaving must not claim a version whose shape it no longer has.
     expect(snapshot.schemaVersion).toBe(SNAPSHOT_SCHEMA_VERSION)
     expect(() => lint(snapshot, {}, rules)).not.toThrow()
