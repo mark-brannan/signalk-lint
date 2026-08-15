@@ -1,0 +1,115 @@
+{
+  "schemaVersion": 3,
+  "capturedAt": "2026-08-14T10:00:00.000Z",
+  "source": {
+    "kind": "fixture"
+  },
+  "server": {
+    "version": "2.30.0",
+    "settings": {
+      "port": 3000,
+      "ssl": false,
+      "mdns": true,
+      "pipedProviders": [
+        {
+          "id": "n2k-can0",
+          "enabled": true,
+          "pipeElements": [
+            {
+              "type": "providers/simple",
+              "options": {
+                "logging": false,
+                "type": "NMEA2000",
+                "subOptions": {
+                  "type": "canbus-canboatjs",
+                  "interface": "can0"
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "security": {
+      "configured": true,
+      "allowReadonly": false,
+      "userCount": 1,
+      "deviceCount": 0,
+      "allowNewUserRegistration": false,
+      "allowDeviceAccessRequests": true
+    },
+    "sourcePriorities": {},
+    "system": {
+      "nodeVersion": "v22.11.0",
+      "platform": "linux",
+      "arch": "arm64",
+      "totalMemMB": 3958,
+      "disk": {
+        "totalMB": 29820,
+        "usedMB": 11203,
+        "usedPercent": 37.6
+      },
+      "hasRTC": false
+    },
+    "pluginConfig": {}
+  },
+  "host": {
+    "network": [
+      { "name": "can0", "type": 280, "up": true, "operstate": "unknown" },
+      { "name": "eth0", "type": 1, "up": true, "operstate": "up" },
+      { "name": "lo", "type": 772, "up": true, "operstate": "unknown" }
+    ],
+    "gpsd": {
+      "file": "/etc/default/gpsd",
+      "devices": [{ "path": "/dev/ttyACM0", "exists": true }]
+    },
+    "systemdDropins": [
+      {
+        "unit": "signalk.service",
+        "file": "/etc/systemd/system/signalk.service.d/override.conf",
+        "lines": ["[Service]", "Restart=always", "WatchdogSec=30", ""]
+      }
+    ],
+    "cron": [
+      {
+        "file": "/etc/cron.d/maintenance",
+        "lines": [
+          "0 4 * * 1 root pgrep -x npm > /dev/null || /sbin/reboot",
+          ""
+        ]
+      }
+    ],
+    "autostart": [
+      {
+        "file": "/etc/xdg/lxsession/LXDE-pi/autostart",
+        "lines": [
+          "@lxpanel --profile LXDE-pi",
+          "@chromium-browser --kiosk http://localhost:3000/@signalk/instrumentpanel/",
+          ""
+        ]
+      }
+    ],
+    "drm": [
+      { "connector": "card1-HDMI-A-1", "status": "connected" },
+      { "connector": "card1-HDMI-A-2", "status": "disconnected" }
+    ],
+    "time": {
+      "ntp": true,
+      "ntpSynchronized": true
+    },
+    "watchdog": {
+      "runtimeWatchdogRaw": "15s",
+      "runtimeWatchdogSec": 15,
+      "devices": [{ "name": "watchdog0", "timeoutSec": 15 }]
+    },
+    "journald": {
+      "storage": "persistent",
+      "systemMaxUse": "200M",
+      "persistentJournalDir": true,
+      "files": [
+        "/etc/systemd/journald.conf",
+        "/etc/systemd/journald.conf.d/size.conf"
+      ]
+    }
+  }
+}
