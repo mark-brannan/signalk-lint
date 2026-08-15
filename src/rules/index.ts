@@ -20,6 +20,8 @@ import { canBusWithoutProvider } from './can-bus-without-provider.js'
 import { noRtcNoTimeSync } from './no-rtc-no-time-sync.js'
 import { gpsdMissingDevice } from './gpsd-missing-device.js'
 import { systemdDropinOutsideSection } from './systemd-dropin-outside-section.js'
+import { cronRebootUnguarded } from './cron-reboot-unguarded.js'
+import { kioskBrowserNoDisplay } from './kiosk-browser-no-display.js'
 
 export const rules: readonly Rule[] = [
   serverVersionAdvisories,
@@ -34,7 +36,9 @@ export const rules: readonly Rule[] = [
   canBusWithoutProvider,
   noRtcNoTimeSync,
   gpsdMissingDevice,
-  systemdDropinOutsideSection
+  systemdDropinOutsideSection,
+  cronRebootUnguarded,
+  kioskBrowserNoDisplay
 ]
 
 export {
@@ -50,5 +54,7 @@ export {
   canBusWithoutProvider,
   noRtcNoTimeSync,
   gpsdMissingDevice,
-  systemdDropinOutsideSection
+  systemdDropinOutsideSection,
+  cronRebootUnguarded,
+  kioskBrowserNoDisplay
 }
