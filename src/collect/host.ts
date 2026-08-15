@@ -368,11 +368,14 @@ export function parseTimespanSec(raw: string): number | null {
 }
 
 /**
- * systemd's `*USec`-suffixed D-Bus properties -- RuntimeWatchdogUSec among
- * them -- are always printed by `systemctl show --value` as a bare integer
- * count of microseconds, never the pretty "1min 30s" form that `*Sec`-suffixed
- * properties can take in a unit file. Rounded to whole seconds because that is
- * what this value is compared against: /sys/class/watchdog's integer timeout.
+ * Some systemd versions print `*USec`-suffixed D-Bus properties like
+ * RuntimeWatchdogUSec as a bare integer count of microseconds rather than the
+ * pretty "30s" / "1min 30s" form -- verified both ways: systemd 252 (Debian
+ * 12, the boat this rule comes from) prints "30s", but documentation for
+ * newer systemd describes the bare-microseconds form as the norm for `USec`
+ * properties. Both are accepted here rather than assumed. Rounded to whole
+ * seconds because that is what this value is compared against:
+ * /sys/class/watchdog's integer timeout.
  */
 function parseWatchdogSec(raw: string): number | null {
   if (/^\d+$/.test(raw)) return Math.round(Number(raw) / 1e6)

@@ -207,14 +207,10 @@ describe('collectHostFacts()', () => {
     expect(facts!.time).toEqual({ ntp: true, ntpSynchronized: false })
   })
 
-  it('combines systemd and /sys views of the watchdog', async () => {
+  it('combines systemd and /sys views of the watchdog, bare-microseconds form', async () => {
     const root = await fakeRoot({
       'sys/class/watchdog/watchdog0/timeout': '15\n'
     })
-    // systemctl show --property=RuntimeWatchdogUSec --value prints a bare
-    // microsecond integer, not a pretty "10s" timespan -- confirmed against
-    // systemd's own docs (*USec-suffixed D-Bus properties are never the
-    // pretty form).
     const exec: ExecFn = (cmd) =>
       Promise.resolve(cmd === 'systemctl' ? '10000000\n' : null)
     const facts = await collectHostFacts(opts(root, exec))
@@ -222,6 +218,23 @@ describe('collectHostFacts()', () => {
       runtimeWatchdogRaw: '10000000',
       runtimeWatchdogSec: 10,
       devices: [{ name: 'watchdog0', timeoutSec: 15 }]
+    })
+  })
+
+  it('combines systemd and /sys views of the watchdog, pretty-timespan form', async () => {
+    // Verified against symphony-pi's real systemctl: systemd 252 (Debian 12)
+    // prints "30s" for RuntimeWatchdogUSec --value, not bare microseconds --
+    // both forms are real, so both are covered.
+    const root = await fakeRoot({
+      'sys/class/watchdog/watchdog0/timeout': '30\n'
+    })
+    const exec: ExecFn = (cmd) =>
+      Promise.resolve(cmd === 'systemctl' ? '30s\n' : null)
+    const facts = await collectHostFacts(opts(root, exec))
+    expect(facts!.watchdog).toEqual({
+      runtimeWatchdogRaw: '30s',
+      runtimeWatchdogSec: 30,
+      devices: [{ name: 'watchdog0', timeoutSec: 30 }]
     })
   })
 

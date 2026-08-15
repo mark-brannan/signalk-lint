@@ -187,9 +187,10 @@ export interface TimeSyncFacts {
 export interface WatchdogFacts {
   /**
    * systemd's RuntimeWatchdogUSec, verbatim as `systemctl show --value`
-   * printed it -- a bare integer count of microseconds ("0", "10000000"),
-   * which is how systemd always prints its `*USec`-suffixed D-Bus properties.
-   * Kept raw so evidence shows what was observed.
+   * printed it. Format varies by systemd version: bare microseconds
+   * ("0", "10000000") on some, the pretty timespan form ("0", "30s") on
+   * others -- systemd 252 (Debian 12) prints the latter. Kept raw so
+   * evidence shows what was actually observed.
    */
   runtimeWatchdogRaw: string | null
   /** The same value parsed to whole seconds, or null when unparseable. */
