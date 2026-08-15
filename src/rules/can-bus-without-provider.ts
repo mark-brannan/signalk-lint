@@ -41,6 +41,10 @@ function readsInterface(provider: PipedProvider, name: string): boolean {
   if (!nmeaProtocolsOf(provider).includes('NMEA2000')) return false
   const elements = provider.pipeElements ?? []
   return elements.some((element) => {
+    // nmeaProtocolsOf checked the provider as a whole, which only proves one
+    // element somewhere is NMEA 2000 -- a different, non-NMEA-2000 element
+    // with no subOptions must not count as covering this interface.
+    if (element.options?.type !== 'NMEA2000') return false
     const sub = element.options?.subOptions
     if (sub === undefined || typeof sub !== 'object' || sub === null) {
       // An NMEA 2000 element with no subOptions at all still names no

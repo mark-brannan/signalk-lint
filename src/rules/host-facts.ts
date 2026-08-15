@@ -61,7 +61,7 @@ function arrayOf<T>(
 export function networkInterfacesOf(
   snapshot: Snapshot
 ): NetworkInterfaceFacts[] | null {
-  return arrayOf(
+  const entries = arrayOf(
     snapshot.host?.network,
     (entry): entry is NetworkInterfaceFacts =>
       isObject(entry) &&
@@ -69,6 +69,18 @@ export function networkInterfacesOf(
       isNumberOrNull(entry.type ?? null) &&
       isBooleanOrNull(entry.up ?? null) &&
       isStringOrNull(entry.operstate ?? null)
+  )
+  // arrayOf casts the validated array through as-is, so a field the
+  // validation treated as optional (`?? null`) can still reach a caller as
+  // `undefined` rather than the `null` its type promises -- rebuild each
+  // entry the same way timeOf and watchdogOf do.
+  return (
+    entries?.map((entry) => ({
+      name: entry.name,
+      type: entry.type ?? null,
+      up: entry.up ?? null,
+      operstate: entry.operstate ?? null
+    })) ?? null
   )
 }
 

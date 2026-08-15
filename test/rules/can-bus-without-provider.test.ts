@@ -63,6 +63,33 @@ describe('host/can-bus-without-provider', () => {
     expect(rule.evaluate(snapshot)).toEqual([])
   })
 
+  it('does not let a non-NMEA-2000 element with no subOptions cover the interface', () => {
+    // nmeaProtocolsOf checks the provider as a whole: an NMEA 2000 element
+    // aimed at can1 makes the provider "carry NMEA2000" even though a
+    // separate, unrelated element (no options at all) sits beside it. That
+    // second element must not be read as "covers every interface" just
+    // because it lacks subOptions -- it isn't an NMEA 2000 element in the
+    // first place.
+    const snapshot = fixture('host-can0-no-provider')
+    ;(snapshot.server.settings as Record<string, unknown>).pipedProviders = [
+      {
+        id: 'n2k-can1',
+        enabled: true,
+        pipeElements: [
+          {
+            type: 'providers/simple',
+            options: {
+              type: 'NMEA2000',
+              subOptions: { type: 'canbus-canboatjs', interface: 'can1' }
+            }
+          },
+          { type: 'providers/simple' }
+        ]
+      }
+    ]
+    expect(rule.evaluate(snapshot)).toHaveLength(1)
+  })
+
   it('fires when the provider reads a different interface', () => {
     const snapshot = fixture('host-healthy')
     const providers = (snapshot.server.settings as Record<string, unknown>)
