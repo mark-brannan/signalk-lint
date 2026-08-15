@@ -1,0 +1,71 @@
+name: Auto Version
+
+# Ensures every version bump that lands on main gets tagged and published,
+# without anyone needing push access to create the tag by hand. Version
+# bumps themselves are still manual (see CLAUDE.md) -- this only tags and
+# publishes whatever version is already sitting in package.json on main.
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  actions: write # to dispatch publish.yml (gh workflow run / gh run watch)
+
+concurrency:
+  group: auto-version-main
+  cancel-in-progress: false
+
+jobs:
+  tag-and-publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # need the full tag history to find the latest one
+
+      - name: Tag if package.json's version isn't tagged yet
+        id: tag
+        run: |
+          PKG_VERSION=$(node -p "require('./package.json').version")
+          LATEST_TAG=$(git tag --list 'v*' --sort=-v:refname | head -n1)
+          LATEST_VERSION="${LATEST_TAG#v}"
+          echo "package.json: $PKG_VERSION, latest tag: ${LATEST_TAG:-(none)}"
+
+          if [ "$PKG_VERSION" = "$LATEST_VERSION" ]; then
+            echo "Already tagged; nothing to publish."
+            exit 0
+          fi
+
+          TAG="v$PKG_VERSION"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          git tag "$TAG"
+          git push origin "$TAG"
+
+      # Deliberately not a plain tag push triggering publish.yml's own
+      # `push: tags` listener: a tag pushed with the default GITHUB_TOKEN
+      # doesn't trigger other workflows (GitHub's own loop-prevention).
+      # workflow_dispatch is the path that actually fires it.
+      - name: Trigger the real publish, and wait for it to actually succeed
+        if: steps.tag.outputs.tag != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="${{ steps.tag.outputs.tag }}"
+          BEFORE=$(gh run list --workflow=publish.yml --json databaseId --jq '.[0].databaseId // 0')
+          gh workflow run publish.yml --ref "$TAG"
+
+          RUN_ID=""
+          for i in $(seq 1 20); do
+            sleep 5
+            RUN_ID=$(gh run list --workflow=publish.yml --json databaseId,event,headBranch \
+              --jq "[.[] | select(.event == \"workflow_dispatch\" and .headBranch == \"$TAG\" and .databaseId > $BEFORE)][0].databaseId // empty")
+            if [ -n "$RUN_ID" ]; then break; fi
+          done
+          if [ -z "$RUN_ID" ]; then
+            echo "Could not find the triggered publish run for $TAG" >&2
+            exit 1
+          fi
+          echo "Watching publish run $RUN_ID for $TAG"
+          gh run watch "$RUN_ID" --exit-status

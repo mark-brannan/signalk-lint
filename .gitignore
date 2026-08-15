@@ -3,3 +3,8 @@ dist/
 *.log
 .DS_Store
 snapshot*.json
+
+# Generated from the root icon.svg by scripts/sync-icon.mjs, the same way
+# dist/ is generated: build output that ships (public/ is in package.json's
+# "files") but has no business being a second copy under version control.
+/public/icon.svg

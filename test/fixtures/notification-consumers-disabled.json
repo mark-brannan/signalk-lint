@@ -1,0 +1,87 @@
+{
+  "schemaVersion": 2,
+  "capturedAt": "2026-08-01T00:00:00.000Z",
+  "source": {
+    "kind": "fixture"
+  },
+  "server": {
+    "version": "2.31.0",
+    "settings": {
+      "port": 3000,
+      "ssl": false,
+      "mdns": true,
+      "pipedProviders": [
+        {
+          "id": "n2k-can0",
+          "enabled": true,
+          "pipeElements": [
+            {
+              "type": "providers/simple",
+              "options": {
+                "logging": false,
+                "type": "NMEA2000",
+                "subOptions": {
+                  "type": "canbus-canboatjs",
+                  "interface": "can0",
+                  "uniqueNumber": 123456
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "security": {
+      "configured": true,
+      "allowReadonly": false,
+      "userCount": 1,
+      "deviceCount": 0,
+      "allowNewUserRegistration": false,
+      "allowDeviceAccessRequests": true
+    },
+    "sourcePriorities": {},
+    "system": {
+      "nodeVersion": "v22.22.2",
+      "platform": "linux",
+      "arch": "x64",
+      "totalMemMB": 16075,
+      "disk": {
+        "totalMB": 258020,
+        "usedMB": 7393,
+        "usedPercent": 2.9
+      },
+      "hasRTC": true
+    },
+    "pluginConfig": {
+      "signalk-doctor": {
+        "configuration": {
+          "managedContainer": false,
+          "logLevel": "info",
+          "publishNotifications": true,
+          "notificationIntervalSeconds": 60
+        },
+        "enabled": true
+      },
+      "signalk-gpio-beeper-plugin": {
+        "configuration": {
+          "interval": 1000,
+          "duration": 300,
+          "gpioPin": 17,
+          "gpioChip": "gpiochip0"
+        },
+        "enabled": false
+      },
+      "signalk-notification-player": {
+        "enabled": false,
+        "configuration": {}
+      },
+      "signalk-rpi-monitor": {
+        "configuration": {
+          "path_cpu_temp": "environment.rpi.cpu.temperature",
+          "rate": 30
+        },
+        "enabled": true
+      }
+    }
+  }
+}

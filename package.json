@@ -1,6 +1,6 @@
 {
   "name": "signalk-lint",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "A linter for Signal K: checks a snapshot of your configuration and data against deterministic rules for common pitfalls.",
   "type": "module",
   "main": "./dist/index.js",
@@ -16,6 +16,7 @@
   "files": [
     "dist",
     "public",
+    "icon.svg",
     "README.md",
     "LICENSE"
   ],
@@ -23,6 +24,7 @@
     "node": ">=22"
   },
   "scripts": {
+    "prebuild": "node scripts/sync-icon.mjs",
     "build": "tsc",
     "watch": "npm run build -- -w",
     "test": "vitest run",
@@ -31,6 +33,7 @@
     "format:check": "prettier --check \"src/**/*.ts\" \"test/**/*.ts\"",
     "update-advisories": "node scripts/update-advisories.mjs",
     "lint:local": "npm run build && node dist/cli.js --config-dir \"${SIGNALK_NODE_CONFIG_DIR:-$HOME/.signalk}\"",
+    "prepare": "node scripts/sync-icon.mjs",
     "prepublishOnly": "npm run build"
   },
   "repository": {
@@ -51,8 +54,10 @@
     "marine"
   ],
   "signalk-plugin-enabled-by-default": true,
+  "appIcon": "/signalk-lint/icon.svg",
   "signalk": {
-    "displayName": "Signal K Lint"
+    "displayName": "Signal K Lint",
+    "appIcon": "./icon.svg"
   },
   "author": "Mark Brannan",
   "license": "Apache-2.0",

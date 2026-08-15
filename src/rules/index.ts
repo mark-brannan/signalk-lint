@@ -16,6 +16,7 @@ import { btSensorsScanStarvation } from './bt-sensors-scan-starvation.js'
 import { alarmPathDead } from './alarm-path-dead.js'
 import { noDataConnections } from './no-data-connections.js'
 import { fallbackIsPrimary } from './fallback-is-primary.js'
+import { notificationConsumerDisabled } from './notification-consumer-disabled.js'
 import { canBusWithoutProvider } from './can-bus-without-provider.js'
 import { noRtcNoTimeSync } from './no-rtc-no-time-sync.js'
 import { gpsdMissingDevice } from './gpsd-missing-device.js'
@@ -35,6 +36,7 @@ export const rules: readonly Rule[] = [
   alarmPathDead,
   noDataConnections,
   fallbackIsPrimary,
+  notificationConsumerDisabled,
   canBusWithoutProvider,
   noRtcNoTimeSync,
   gpsdMissingDevice,
@@ -55,6 +57,7 @@ export {
   alarmPathDead,
   noDataConnections,
   fallbackIsPrimary,
+  notificationConsumerDisabled,
   canBusWithoutProvider,
   noRtcNoTimeSync,
   gpsdMissingDevice,
