@@ -22,6 +22,8 @@ import { gpsdMissingDevice } from './gpsd-missing-device.js'
 import { systemdDropinOutsideSection } from './systemd-dropin-outside-section.js'
 import { cronRebootUnguarded } from './cron-reboot-unguarded.js'
 import { kioskBrowserNoDisplay } from './kiosk-browser-no-display.js'
+import { watchdogTimeoutMismatch } from './watchdog-timeout-mismatch.js'
+import { journaldNoMaxUse } from './journald-no-max-use.js'
 
 export const rules: readonly Rule[] = [
   serverVersionAdvisories,
@@ -38,7 +40,9 @@ export const rules: readonly Rule[] = [
   gpsdMissingDevice,
   systemdDropinOutsideSection,
   cronRebootUnguarded,
-  kioskBrowserNoDisplay
+  kioskBrowserNoDisplay,
+  watchdogTimeoutMismatch,
+  journaldNoMaxUse
 ]
 
 export {
@@ -56,5 +60,7 @@ export {
   gpsdMissingDevice,
   systemdDropinOutsideSection,
   cronRebootUnguarded,
-  kioskBrowserNoDisplay
+  kioskBrowserNoDisplay,
+  watchdogTimeoutMismatch,
+  journaldNoMaxUse
 }
