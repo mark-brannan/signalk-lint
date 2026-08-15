@@ -76,6 +76,21 @@ describe('host/kiosk-browser-no-display', () => {
     expect(result.unevaluated).toEqual([
       { ruleId: rule.id, missing: ['host.drm'] }
     ])
+
+    // This rule is the only one declaring two fact groups, so it is the only
+    // place a multi-entry `missing` array from lint() gets covered at all.
+    const noAutostart = fixture('host-faulty')
+    noAutostart.host!.autostart = null
+    expect(lint(noAutostart, {}, [rule]).unevaluated).toEqual([
+      { ruleId: rule.id, missing: ['host.autostart'] }
+    ])
+
+    const neither = fixture('host-faulty')
+    neither.host!.autostart = null
+    neither.host!.drm = null
+    expect(lint(neither, {}, [rule]).unevaluated).toEqual([
+      { ruleId: rule.id, missing: ['host.autostart', 'host.drm'] }
+    ])
   })
 
   it('survives a garbage snapshot without throwing', () => {
