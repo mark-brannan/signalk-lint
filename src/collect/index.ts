@@ -19,6 +19,13 @@ import {
   SystemInfo,
   Snapshot
 } from '../types.js'
+import { redactSecrets } from './redact.js'
+import { collectHostFacts, HostCollectOptions } from './host.js'
+
+// Redaction lives in ./redact.ts now that host file lines need it too, but it
+// remains part of this module's public surface -- it is a promise the
+// collector makes, not an implementation detail.
+export { REDACTED } from './redact.js'
 
 async function readJson(path: string): Promise<Record<string, unknown> | null> {
   try {
@@ -26,106 +33,6 @@ async function readJson(path: string): Promise<Record<string, unknown> | null> {
   } catch {
     return null
   }
-}
-
-/**
- * Key names whose values are treated as credentials.
- *
- * A denylist, because plugin configs are third-party schemas nobody here
- * controls -- there is no allowlist that could be held complete. So this
- * reduces the blast radius rather than eliminating it, and the docs say that
- * plainly instead of implying a guarantee.
- *
- * Wide within a word, strict about word boundaries. Under-redacting puts a live
- * credential in a file someone pastes into a bug report, so `key` matches as a
- * whole word anywhere in a name -- `sharedKey`, `accessKey`, `accessKeyId` --
- * and `hash` and `salt` are here because a stored hash is credential-equivalent,
- * `cert`/`pem` because the private half routinely lands in the same field as
- * the public one.
- *
- * The alternative -- keeping only keys some rule names -- was rejected: it
- * would make the collector carry plugin-specific knowledge that deliberately
- * lives in rules, and every new rule would need a collector change.
- */
-const SECRET_WORDS = new Set([
-  'password',
-  'passwd',
-  'passphrase',
-  'secret',
-  'token',
-  'credential',
-  'credentials',
-  'auth',
-  'authorization',
-  'bearer',
-  'jwt',
-  'apikey',
-  'key',
-  'keys',
-  'cookie',
-  'signature',
-  'signing',
-  'salt',
-  'hash',
-  'cert',
-  'certificate',
-  'pem',
-  'psk'
-])
-
-/**
- * Words that name a credential only in company.
- *
- * `session` alone is usually `sessionTimeout` -- a number, and useful in a bug
- * report. `sessionId` and `sessionToken` are the credential.
- */
-const QUALIFIED_WORDS = new Set(['session'])
-const QUALIFIERS = new Set(['id', 'key', 'token', 'secret'])
-
-/**
- * Split a config key into its words: camelCase, snake_case and kebab-case all
- * arrive here, and only whole words are compared.
- *
- * Substring matching is what makes a denylist destructive on a boat.
- * `pass` inside `compass`, and `pin` inside `pinMode` or `gpioPin`, are the
- * two that would bite hardest here -- a heading calibration block and a GPIO
- * assignment, both replaced by a string, in the one artifact whose purpose is
- * letting somebody else debug the boat. `pin` is absent from the lists above
- * for that reason: on a Signal K install it names a GPIO far more often than a
- * passcode.
- */
-function wordsIn(key: string): string[] {
-  return key
-    .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
-    .split(/[^A-Za-z0-9]+/)
-    .filter(Boolean)
-    .map((word) => word.toLowerCase())
-}
-
-function namesCredential(key: string): boolean {
-  const words = wordsIn(key)
-  if (words.some((word) => SECRET_WORDS.has(word))) return true
-  return (
-    words.some((word) => QUALIFIED_WORDS.has(word)) &&
-    words.some((word) => QUALIFIERS.has(word))
-  )
-}
-
-export const REDACTED = '[redacted]'
-
-/**
- * Shape is kept because a rule may legitimately need to know that a password
- * is *set* without knowing what it is -- "MQTT configured with no TLS" is a
- * finding someone will want, and it must not require the secret to reason.
- */
-function redactSecrets(value: unknown): unknown {
-  if (Array.isArray(value)) return value.map(redactSecrets)
-  if (value === null || typeof value !== 'object') return value
-  const out: Record<string, unknown> = {}
-  for (const [key, inner] of Object.entries(value as Record<string, unknown>)) {
-    out[key] = namesCredential(key) ? REDACTED : redactSecrets(inner)
-  }
-  return out
 }
 
 function asBool(v: unknown): boolean | null {
@@ -176,6 +83,11 @@ export interface CollectOptions {
   serverVersion?: string | null
   /** Overrides the capture timestamp. Tests pass a fixed value. */
   now?: Date
+  /**
+   * Passed through to the host facts collector. Tests point it at a fixture
+   * tree; production callers omit it and get the real machine.
+   */
+  host?: HostCollectOptions
 }
 
 /**
@@ -263,15 +175,16 @@ async function systemInfo(configDir: string): Promise<SystemInfo> {
 }
 
 export async function collect(options: CollectOptions): Promise<Snapshot> {
-  const { configDir, serverVersion = null, now = new Date() } = options
+  const { configDir, serverVersion = null, now = new Date(), host } = options
 
-  const [settings, security, sourcePriorities, system, plugins] =
+  const [settings, security, sourcePriorities, system, plugins, hostFacts] =
     await Promise.all([
       readJson(join(configDir, 'settings.json')),
       readJson(join(configDir, 'security.json')),
       readJson(join(configDir, 'priorities.json')),
       systemInfo(configDir),
-      pluginConfig(configDir)
+      pluginConfig(configDir),
+      collectHostFacts(host)
     ])
 
   const server: ServerFacts = {
@@ -287,6 +200,7 @@ export async function collect(options: CollectOptions): Promise<Snapshot> {
     schemaVersion: SNAPSHOT_SCHEMA_VERSION,
     capturedAt: now.toISOString(),
     source: { kind: 'config-dir', configDir },
-    server
+    server,
+    host: hostFacts
   }
 }

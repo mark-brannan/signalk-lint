@@ -55,11 +55,24 @@ export function lint(
   const overrides = resolveConfig(config)
   const findings: Finding[] = []
   const skipped: string[] = []
+  const unevaluated: LintResult['unevaluated'] = []
 
   for (const rule of rules) {
     const configured = overrides[rule.id] ?? rule.defaultSeverity
     if (configured === 'off') {
       skipped.push(rule.id)
+      continue
+    }
+
+    // The degradation contract for host rules, enforced once here rather than
+    // as a null-check prologue in every rule: a rule whose declared facts this
+    // snapshot does not carry is skipped visibly -- it must not crash, and it
+    // must not be mistakable for "looked and found nothing".
+    const missing = (rule.hostFacts ?? [])
+      .filter((group) => (snapshot.host?.[group] ?? null) === null)
+      .map((group) => `host.${group}`)
+    if (missing.length > 0) {
+      unevaluated.push({ ruleId: rule.id, missing })
       continue
     }
 
@@ -84,7 +97,7 @@ export function lint(
       a.title.localeCompare(b.title)
   )
 
-  return { snapshot, findings, skipped }
+  return { snapshot, findings, skipped, unevaluated }
 }
 
 /** True when any finding would justify a non-zero exit code. */
