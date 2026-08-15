@@ -104,6 +104,30 @@ describe('collectHostFacts()', () => {
     expect(JSON.stringify(lines)).not.toContain('hunter2')
   })
 
+  it('redacts every credential in a multi-assignment Environment= line, keeping the rest', async () => {
+    // systemd.exec(5): Environment= takes a space-separated list of
+    // assignments, each independently quotable. A parser that only looked at
+    // the first assignment either leaked a credential arriving second, or
+    // dropped every assignment after the one it redacted.
+    const root = await fakeRoot({
+      'etc/systemd/system/signalk.service.d/override.conf':
+        '[Service]\n' +
+        'Environment="MQTT_PASSWORD=hunter2" MQTT_HOST=broker.local\n' +
+        'Environment=MQTT_HOST=broker.local MQTT_PASSWORD=hunter2\n' +
+        'Environment=MQTT_PASSWORD="hunter2 with spaces" MQTT_HOST=broker.local\n'
+    })
+    const facts = await collectHostFacts(opts(root))
+    const lines = facts!.systemdDropins![0]!.lines
+    expect(lines).toEqual([
+      '[Service]',
+      'Environment="MQTT_PASSWORD=[redacted]" MQTT_HOST=broker.local',
+      'Environment=MQTT_HOST=broker.local MQTT_PASSWORD=[redacted]',
+      'Environment=MQTT_PASSWORD="[redacted]" MQTT_HOST=broker.local',
+      ''
+    ])
+    expect(JSON.stringify(lines)).not.toContain('hunter2')
+  })
+
   it('collects cron tables and redacts credential-shaped assignments', async () => {
     const root = await fakeRoot({
       'etc/crontab': 'MQTT_PASSWORD=hunter2\n0 3 * * * root /sbin/reboot\n',

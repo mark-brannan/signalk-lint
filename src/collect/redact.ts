@@ -97,6 +97,40 @@ export function redactSecrets(value: unknown): unknown {
 }
 
 /**
+ * systemd's `Environment=` takes a space-separated *list* of assignments
+ * (systemd.exec(5)): `Environment="A=1" B=2 C="spaced value"`. Each entry is
+ * either the whole `NAME=value` wrapped in one layer of matching quotes, or
+ * bare/unquoted with its value optionally quoted on its own (`NAME="value"`).
+ * Matched with `.replace` rather than a full tokenizer so that anything
+ * between and around assignments -- spacing, entries this pattern doesn't
+ * recognize -- passes through untouched; only a matched, credential-named
+ * assignment is rewritten.
+ */
+const NESTED_ASSIGNMENT =
+  /"([A-Za-z_][A-Za-z0-9_]*)=([^"]*)"|'([A-Za-z_][A-Za-z0-9_]*)=([^']*)'|([A-Za-z_][A-Za-z0-9_]*)=("[^"]*"|'[^']*'|\S*)/g
+
+function redactNestedAssignments(text: string): string {
+  return text.replace(
+    NESTED_ASSIGNMENT,
+    (whole, dqName, _dqValue, sqName, _sqValue, bareName, bareValue) => {
+      if (dqName !== undefined) {
+        return namesCredential(dqName) ? `"${dqName}=${REDACTED}"` : whole
+      }
+      if (sqName !== undefined) {
+        return namesCredential(sqName) ? `'${sqName}=${REDACTED}'` : whole
+      }
+      if (!namesCredential(bareName)) return whole
+      const bareQuote =
+        (bareValue[0] === '"' || bareValue[0] === "'") &&
+        bareValue.endsWith(bareValue[0])
+          ? bareValue[0]
+          : ''
+      return `${bareName}=${bareQuote}${REDACTED}${bareQuote}`
+    }
+  )
+}
+
+/**
  * Redact a `KEY=VALUE`-shaped assignment in a raw text line: cron environment
  * lines, systemd `Environment=` directives, shell exports in autostart files.
  *
@@ -106,24 +140,18 @@ export function redactSecrets(value: unknown): unknown {
  * redactSecrets keeps keys -- "a password is set here" is a fact a rule may
  * need.
  *
- * systemd's `Environment=NAME=value` nests one assignment in another, so the
- * name checked is the innermost one -- and systemd allows that nested
- * assignment to be quoted (`Environment="NAME=value"`), so one layer of
- * matching quotes is stripped before the inner name is read and put back
- * around the redacted value, so the line stays syntactically valid.
+ * `Environment=NAME=value` nests one or more further assignments inside the
+ * outer one, so once the outer key itself clears (it is never a credential
+ * name in practice -- `Environment`, `export`, etc.), the value is rescanned
+ * for nested `NAME=value` entries and each credential-named one is redacted
+ * independently.
  */
 export function redactAssignmentLine(line: string): string {
   const match = /^(\s*(?:export\s+)?)([A-Za-z_][A-Za-z0-9_]*)=(.*)$/.exec(line)
   if (!match) return line
   const [, prefix, key, rest] = match
-
-  const quote = rest[0] === '"' || rest[0] === "'" ? rest[0] : ''
-  const unquoted = quote && rest.endsWith(quote) ? rest.slice(1, -1) : rest
-
-  const inner = /^([A-Za-z_][A-Za-z0-9_]*)=/.exec(unquoted)
-  if (inner && namesCredential(inner[1])) {
-    return `${prefix}${key}=${quote}${inner[1]}=${REDACTED}${quote}`
-  }
   if (namesCredential(key)) return `${prefix}${key}=${REDACTED}`
-  return line
+
+  const redactedRest = redactNestedAssignments(rest)
+  return redactedRest === rest ? line : `${prefix}${key}=${redactedRest}`
 }
