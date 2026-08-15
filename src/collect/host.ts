@@ -232,8 +232,7 @@ async function autostart(
     }
 
     const sessionDirs = [join(root, 'etc/xdg/lxsession')]
-    if (home !== null)
-      sessionDirs.push(join(root, '.' + home, '.config/lxsession'))
+    if (home !== null) sessionDirs.push(join(root, home, '.config/lxsession'))
     for (const base of sessionDirs) {
       let names: string[]
       try {
@@ -253,7 +252,7 @@ async function autostart(
     }
 
     if (home !== null) {
-      const homeRoot = join(root, '.' + home)
+      const homeRoot = join(root, home)
       await push(
         join(homeRoot, '.config/labwc/autostart'),
         join(home, '.config/labwc/autostart')
@@ -357,12 +356,28 @@ export function parseTimespanSec(raw: string): number | null {
   const pattern = /\s*(\d+(?:\.\d+)?)\s*([a-zµ]+)/gy
   let match: RegExpExecArray | null
   while ((match = pattern.exec(trimmed)) !== null) {
-    const factor = UNITS[match[2]]
-    if (factor === undefined) return null
-    total += Number(match[1]) * factor
+    // UNITS is a plain object literal, so it inherits Object.prototype -- a
+    // token like "constructor" would otherwise resolve to a function rather
+    // than undefined, and `Number * function` is NaN, not the null this
+    // function promises for an unknown unit.
+    if (!Object.hasOwn(UNITS, match[2])) return null
+    total += Number(match[1]) * UNITS[match[2]]
     matchedTo = pattern.lastIndex
   }
   return matchedTo === trimmed.length && matchedTo > 0 ? total : null
+}
+
+/**
+ * systemd's `*USec`-suffixed D-Bus properties -- RuntimeWatchdogUSec among
+ * them -- are always printed by `systemctl show --value` as a bare integer
+ * count of microseconds, never the pretty "1min 30s" form that `*Sec`-suffixed
+ * properties can take in a unit file. Rounded to whole seconds because that is
+ * what this value is compared against: /sys/class/watchdog's integer timeout.
+ */
+function parseWatchdogSec(raw: string): number | null {
+  if (/^\d+$/.test(raw)) return Math.round(Number(raw) / 1e6)
+  const parsed = parseTimespanSec(raw)
+  return parsed === null ? null : Math.round(parsed)
 }
 
 async function watchdog(
@@ -398,7 +413,7 @@ async function watchdog(
   return {
     runtimeWatchdogRaw,
     runtimeWatchdogSec:
-      runtimeWatchdogRaw === null ? null : parseTimespanSec(runtimeWatchdogRaw),
+      runtimeWatchdogRaw === null ? null : parseWatchdogSec(runtimeWatchdogRaw),
     devices
   }
 }

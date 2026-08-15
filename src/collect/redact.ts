@@ -107,15 +107,22 @@ export function redactSecrets(value: unknown): unknown {
  * need.
  *
  * systemd's `Environment=NAME=value` nests one assignment in another, so the
- * name checked is the innermost one.
+ * name checked is the innermost one -- and systemd allows that nested
+ * assignment to be quoted (`Environment="NAME=value"`), so one layer of
+ * matching quotes is stripped before the inner name is read and put back
+ * around the redacted value, so the line stays syntactically valid.
  */
 export function redactAssignmentLine(line: string): string {
   const match = /^(\s*(?:export\s+)?)([A-Za-z_][A-Za-z0-9_]*)=(.*)$/.exec(line)
   if (!match) return line
   const [, prefix, key, rest] = match
-  const inner = /^([A-Za-z_][A-Za-z0-9_]*)=/.exec(rest)
+
+  const quote = rest[0] === '"' || rest[0] === "'" ? rest[0] : ''
+  const unquoted = quote && rest.endsWith(quote) ? rest.slice(1, -1) : rest
+
+  const inner = /^([A-Za-z_][A-Za-z0-9_]*)=/.exec(unquoted)
   if (inner && namesCredential(inner[1])) {
-    return `${prefix}${key}=${inner[1]}=${REDACTED}`
+    return `${prefix}${key}=${quote}${inner[1]}=${REDACTED}${quote}`
   }
   if (namesCredential(key)) return `${prefix}${key}=${REDACTED}`
   return line

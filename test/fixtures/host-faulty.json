@@ -104,7 +104,7 @@
       "ntpSynchronized": false
     },
     "watchdog": {
-      "runtimeWatchdogRaw": "10s",
+      "runtimeWatchdogRaw": "10000000",
       "runtimeWatchdogSec": 10,
       "devices": [{ "name": "watchdog0", "timeoutSec": 15 }]
     },

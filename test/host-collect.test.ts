@@ -93,6 +93,17 @@ describe('collectHostFacts()', () => {
     ])
   })
 
+  it('redacts a credential nested in a quoted Environment= assignment', async () => {
+    const root = await fakeRoot({
+      'etc/systemd/system/signalk.service.d/override.conf':
+        '[Service]\nEnvironment="MQTT_PASSWORD=hunter2"\n'
+    })
+    const facts = await collectHostFacts(opts(root))
+    const lines = facts!.systemdDropins![0]!.lines
+    expect(lines).toContain('Environment="MQTT_PASSWORD=[redacted]"')
+    expect(JSON.stringify(lines)).not.toContain('hunter2')
+  })
+
   it('collects cron tables and redacts credential-shaped assignments', async () => {
     const root = await fakeRoot({
       'etc/crontab': 'MQTT_PASSWORD=hunter2\n0 3 * * * root /sbin/reboot\n',
@@ -152,11 +163,15 @@ describe('collectHostFacts()', () => {
     const root = await fakeRoot({
       'sys/class/watchdog/watchdog0/timeout': '15\n'
     })
+    // systemctl show --property=RuntimeWatchdogUSec --value prints a bare
+    // microsecond integer, not a pretty "10s" timespan -- confirmed against
+    // systemd's own docs (*USec-suffixed D-Bus properties are never the
+    // pretty form).
     const exec: ExecFn = (cmd) =>
-      Promise.resolve(cmd === 'systemctl' ? '10s\n' : null)
+      Promise.resolve(cmd === 'systemctl' ? '10000000\n' : null)
     const facts = await collectHostFacts(opts(root, exec))
     expect(facts!.watchdog).toEqual({
-      runtimeWatchdogRaw: '10s',
+      runtimeWatchdogRaw: '10000000',
       runtimeWatchdogSec: 10,
       devices: [{ name: 'watchdog0', timeoutSec: 15 }]
     })
@@ -203,5 +218,12 @@ describe('parseTimespanSec()', () => {
     expect(parseTimespanSec('infinity')).toBeNull()
     expect(parseTimespanSec('')).toBeNull()
     expect(parseTimespanSec('10 parsecs')).toBeNull()
+  })
+
+  it('yields null on an inherited Object.prototype name, not NaN', () => {
+    // UNITS is a plain object literal; a naive `UNITS[unit]` lookup resolves
+    // "constructor" to a function rather than undefined, and Number * that
+    // function is NaN -- not the null this function promises.
+    expect(parseTimespanSec('10constructor')).toBeNull()
   })
 })
