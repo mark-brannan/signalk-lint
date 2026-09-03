@@ -71,24 +71,19 @@ jobs:
           "
           node dist/cli.js --snapshot /tmp/legacy-snapshot.json
 
-  # The single required status check. Everything else fans in here, so the
-  # ruleset requires one context and adding or renaming a matrix leg does not
-  # silently change what is required. `always()` is what lets it evaluate when
-  # a dependency failed or was skipped, so the gate reports an explicit pass or
-  # fail of its own. Without it the gate would inherit the skip, and a skipped
-  # required check is not a dependable block: a job skipped by `if` reports
-  # `skipped`, while a whole workflow skipped by path or branch filters leaves
-  # the check pending forever. Neither is the verdict a ruleset needs.
-  # No `name:` here, deliberately: the reported context is the job id.
+  # The single required status check, shared across repositories: the
+  # `gate` job of mark-brannan/.github's reusable ci-gate workflow, which fails
+  # unless every result in `needs` is green. The reported context is
+  # "ci-gate / gate" -- GitHub names a reusable workflow's checks
+  # "<caller job> / <called job>" -- and that is what the ruleset requires, so
+  # this job's id is part of the contract. `always()` is what lets the gate
+  # evaluate when a dependency failed or was skipped, so it reports an explicit
+  # pass or fail of its own rather than inheriting the skip.
   ci-gate:
-    # It reads nothing and writes nothing; the results come from `needs`.
-    permissions: {}
     needs: [build]
     if: always()
-    runs-on: ubuntu-latest
-    steps:
-      - run: |
-          echo "build: ${{ needs.build.result }}"
-          if [ "${{ needs.build.result }}" != "success" ]; then
-            exit 1
-          fi
+    # It reads nothing and writes nothing; the results go in as an input.
+    permissions: {}
+    uses: mark-brannan/.github/.github/workflows/ci-gate.yml@main
+    with:
+      results: ${{ toJSON(needs) }}
