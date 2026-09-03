@@ -74,9 +74,12 @@ jobs:
   # The single required status check. Everything else fans in here, so the
   # ruleset requires one context and adding or renaming a matrix leg does not
   # silently change what is required. `always()` is what lets it evaluate when
-  # a dependency was skipped rather than being skipped itself -- a required
-  # context that inherits a skip never reports, and blocks the pull request
-  # forever. No `name:` here, deliberately: the reported context is the job id.
+  # a dependency failed or was skipped, so the gate reports an explicit pass or
+  # fail of its own. Without it the gate would inherit the skip, and a skipped
+  # required check is not a dependable block: a job skipped by `if` reports
+  # `skipped`, while a whole workflow skipped by path or branch filters leaves
+  # the check pending forever. Neither is the verdict a ruleset needs.
+  # No `name:` here, deliberately: the reported context is the job id.
   ci-gate:
     # It reads nothing and writes nothing; the results come from `needs`.
     permissions: {}
