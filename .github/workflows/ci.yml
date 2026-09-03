@@ -78,6 +78,8 @@ jobs:
   # context that inherits a skip never reports, and blocks the pull request
   # forever. No `name:` here, deliberately: the reported context is the job id.
   ci-gate:
+    # It reads nothing and writes nothing; the results come from `needs`.
+    permissions: {}
     needs: [build]
     if: always()
     runs-on: ubuntu-latest
