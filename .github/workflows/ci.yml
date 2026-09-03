@@ -70,3 +70,20 @@ jobs:
             fs.writeFileSync('/tmp/legacy-snapshot.json', JSON.stringify(s))
           "
           node dist/cli.js --snapshot /tmp/legacy-snapshot.json
+
+  # The single required status check. Everything else fans in here, so the
+  # ruleset requires one context and adding or renaming a matrix leg does not
+  # silently change what is required. `always()` is what lets it evaluate when
+  # a dependency was skipped rather than being skipped itself -- a required
+  # context that inherits a skip never reports, and blocks the pull request
+  # forever. No `name:` here, deliberately: the reported context is the job id.
+  ci-gate:
+    needs: [build]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          echo "build: ${{ needs.build.result }}"
+          if [ "${{ needs.build.result }}" != "success" ]; then
+            exit 1
+          fi
