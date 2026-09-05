@@ -1,3 +1,5 @@
+# npm weekly for runtime + dev deps (grouped — this repo is small enough
+# that one PR beats N), github-actions weekly for the workflow pins.
 version: 2
 
 updates:
@@ -7,7 +9,7 @@ updates:
       interval: weekly
     open-pull-requests-limit: 3
     groups:
-      dev-dependencies:
+      dependencies:
         patterns: ['*']
 
   - package-ecosystem: github-actions
