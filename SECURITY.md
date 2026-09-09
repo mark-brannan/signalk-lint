@@ -53,7 +53,7 @@ occasionally credentials left in a config value by mistake.
   boat's own configuration; anything that turns a config value into script
   execution rather than displayed text is in scope.
 - **The advisory pipeline** (`scripts/update-advisories.mjs`,
-  `src/data/advisories.ts`, `server-version-advisories.ts`). Advisories ship
+  `src/data/advisories.ts`, `src/rules/server-version-advisories.ts`). Advisories ship
   compiled into the package rather than fetched live, specifically so a boat
   offline still gets a check — a way to make that check silently pass when it
   shouldn't is in scope.
