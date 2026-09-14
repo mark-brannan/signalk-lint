@@ -75,7 +75,7 @@ jobs:
   # the merge base (a stray commit reverted it) merges cleanly and lands
   # nothing. Listed in ci-gate's needs, so it needs no ruleset entry.
   nonempty:
-    uses: mark-brannan/.github/.github/workflows/nonempty-diff.yml@7b15aea59f53dcb5762a091f585b3d83d6dad545
+    uses: mark-brannan/.github/.github/workflows/nonempty-diff.yml@main
 
   # The single required status check, shared across repositories: the
   # `gate` job of mark-brannan/.github's reusable ci-gate workflow, which fails
