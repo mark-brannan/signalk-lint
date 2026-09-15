@@ -71,6 +71,12 @@ jobs:
           "
           node dist/cli.js --snapshot /tmp/legacy-snapshot.json
 
+  # Refuses to call an empty PR green: a branch whose tree equals its base at
+  # the merge base (a stray commit reverted it) merges cleanly and lands
+  # nothing. Listed in ci-gate's needs, so it needs no ruleset entry.
+  nonempty:
+    uses: mark-brannan/.github/.github/workflows/nonempty-diff.yml@main
+
   # The single required status check, shared across repositories: the
   # `gate` job of mark-brannan/.github's reusable ci-gate workflow, which fails
   # unless every result in `needs` is green. The reported context is
@@ -80,7 +86,7 @@ jobs:
   # evaluate when a dependency failed or was skipped, so it reports an explicit
   # pass or fail of its own rather than inheriting the skip.
   ci-gate:
-    needs: [build]
+    needs: [build, nonempty]
     if: always()
     # It reads nothing and writes nothing; the results go in as an input.
     permissions: {}
