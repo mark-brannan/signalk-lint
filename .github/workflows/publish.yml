@@ -1,15 +1,12 @@
 name: Publish
 
-# Runs on version tags (v0.1.0, v0.2.0, ...), pushed by a human, or via
-# workflow_dispatch. Nothing publishes on a plain push to main -- a tag is
-# still a deliberate release act, it just doesn't have to be pushed by hand:
-# auto-version.yml tags a version-bumped main and dispatches this workflow,
-# because a tag it pushes with the default GITHUB_TOKEN would not trigger
-# the `push: tags` listener below (GitHub's own loop-prevention).
+# Runs via workflow_dispatch only, from release-please.yml, once a release
+# PR is merged. Deliberately no `push: tags` trigger: release-please.yml
+# tags through a GitHub App installation token (not the default
+# GITHUB_TOKEN), so that tag push WOULD fire this workflow's own `push:
+# tags` listener too, racing the explicit dispatch. Removing the listener
+# leaves workflow_dispatch as the one path to a publish.
 on:
-  push:
-    tags:
-      - 'v*'
   workflow_dispatch:
 
 permissions:

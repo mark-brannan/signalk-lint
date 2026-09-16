@@ -305,21 +305,22 @@ sharing rather than assuming it is clean.
 
 ## Releasing
 
-Version bumps are manual: edit `package.json`'s `version` and push to `main`.
-Tagging and publishing are not — `.github/workflows/auto-version.yml` runs on
-every push to `main`, tags `vX.Y.Z` if that version isn't tagged yet, and
-dispatches `publish.yml`, which verifies the tag matches `package.json`,
-builds, tests, and publishes via npm OIDC trusted publishing — no npm token
-exists on any developer machine or in CI. A push to `main` that doesn't change
-`version` tags nothing and publishes nothing.
+`release-please` owns the version, the tag, and `CHANGELOG.md` — no one
+edits `package.json`'s `version` by hand any more. A merge to `main` updates
+a standing "chore: release" pull request; merging THAT pull request is the
+release. `versioning: always-bump-patch` in `release-please-config.json`
+pins every release to a patch bump of the current 0.x line regardless of
+commit type, deliberate until Mark decides otherwise — same convention as
+the other vended repos.
 
-`auto-version.yml` dispatches `publish.yml` via `workflow_dispatch` rather than
-relying on its own tag push to trigger `publish.yml`'s `push: tags` listener:
-a tag pushed with the default `GITHUB_TOKEN` doesn't trigger other workflows
-(GitHub's own loop-prevention), so `publish.yml` also listens for
-`workflow_dispatch` and treats the two triggers identically. A human can still
-tag and push by hand — `publish.yml`'s tag-push listener is unchanged — the
-automatic path exists so pushing the version bump to `main` is sufficient.
+SQUASH-MERGE the release pull request: `main` requires linear history and
+release-please's commits are unsigned. On merge, `release-please.yml` tags
+and dispatches `publish.yml`, which verifies the tag matches
+`package.json`, builds, tests, and publishes via npm OIDC trusted
+publishing — no npm token exists on any developer machine or in CI.
+`publish.yml` only runs via `workflow_dispatch`; there is no tag-push
+trigger to race it.
 
-There is no auto-bump hook and no `CHANGELOG.md`: the version number itself
-still has to be moved by hand before any of the above fires.
+This replaces the old `auto-version.yml` (hand-edit `package.json`'s
+version, push to `main`, auto-tag-and-publish) — removed as part of
+standardizing release tooling across the vended repos.
