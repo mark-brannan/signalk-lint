@@ -24,14 +24,7 @@
  * knowledge of one plugin's default behaviour.
  */
 import { Rule, RuleFinding, Snapshot } from '../types.js'
-
-interface VenusPluginConfig {
-  enabled?: boolean
-  configuration?: {
-    useDeviceNames?: boolean
-    instanceMappings?: unknown[]
-  }
-}
+import { isObject } from '../is-object.js'
 
 export const venusRawDeviceInstance: Rule = {
   id: 'plugin/venus-raw-device-instance',
@@ -44,10 +37,10 @@ export const venusRawDeviceInstance: Rule = {
     const plugins = snapshot.server.pluginConfig
     if (plugins === null) return []
 
-    const venus = plugins.venus as VenusPluginConfig | undefined
-    if (venus === undefined || venus.enabled !== true) return []
+    const venus: unknown = plugins.venus
+    if (!isObject(venus) || venus.enabled !== true) return []
 
-    const config = venus.configuration ?? {}
+    const config = isObject(venus.configuration) ? venus.configuration : {}
     if (config.useDeviceNames === true) return []
 
     const mappings = config.instanceMappings

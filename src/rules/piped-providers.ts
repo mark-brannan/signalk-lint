@@ -31,6 +31,7 @@
  * ("canbus-canboatjs", "serial", "ntp"...).
  */
 import { Snapshot } from '../types.js'
+import { isObject } from '../is-object.js'
 
 export interface PipeElementOptions {
   /** Protocol: "NMEA2000", "NMEA0183", "SignalK", "FileStream". */
@@ -70,10 +71,6 @@ export interface PipedProvider {
  * in its finding rather than implying the broader claim.
  */
 const NMEA_PROTOCOLS = new Set(['NMEA2000', 'NMEA0183'])
-
-function isObject(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value)
-}
 
 /**
  * Whether a value is shaped like a provider entry well enough to read.

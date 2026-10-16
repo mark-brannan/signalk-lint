@@ -5,6 +5,14 @@
  * pure function over a Snapshot with fixtures in test/fixtures -- which is
  * deliberately the smallest possible unit of contribution, because rules are
  * where community knowledge about boats will come from, not from us.
+ *
+ * Convention: no rule may throw on malformed input. A snapshot field the rule
+ * reads may be null, the wrong type, or the wrong shape (plugin config is
+ * hand-edited JSON); the rule then reports it or says nothing. A throw aborts
+ * the whole lint run on exactly the broken machine being diagnosed.
+ * test/rules-never-throw.test.ts enforces this for every rule listed below by
+ * mutating each field of every fixture to garbage, so a new rule is covered
+ * on registration.
  */
 import { Rule } from '../types.js'
 import { serverVersionAdvisories } from './server-version-advisories.js'

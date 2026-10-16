@@ -78,7 +78,12 @@ function livePathsOf(config: HealthcheckPluginConfig): LivePath[] {
   const paths: LivePath[] = []
 
   const host = configuration.host
-  if (host !== undefined && isOn(host.enabled) && isOn(host.sendEmail)) {
+  if (
+    host !== null &&
+    typeof host === 'object' &&
+    isOn(host.enabled) &&
+    isOn(host.sendEmail)
+  ) {
     paths.push({
       label: 'host checks (CPU, memory, disk)',
       configPath: 'host',
@@ -114,7 +119,12 @@ export const alarmPathDead: Rule = {
     if (plugins === null) return []
 
     const plugin = plugins[PLUGIN_ID] as HealthcheckPluginConfig | undefined
-    if (plugin === undefined || plugin.enabled !== true) return []
+    if (
+      plugin === null ||
+      typeof plugin !== 'object' ||
+      plugin.enabled !== true
+    )
+      return []
 
     const live = livePathsOf(plugin)
     // Nothing is set to send email, so there is no delivery path to be broken.

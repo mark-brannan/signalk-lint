@@ -22,10 +22,7 @@ import {
   TimeSyncFacts,
   WatchdogFacts
 } from '../types.js'
-
-function isObject(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value)
-}
+import { isObject } from '../is-object.js'
 
 function isStringOrNull(value: unknown): value is string | null {
   return value === null || typeof value === 'string'

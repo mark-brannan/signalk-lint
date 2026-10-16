@@ -71,7 +71,12 @@ export const fallbackIsPrimary: Rule = {
     if (plugins === null) return []
 
     const plugin = plugins[PLUGIN_ID] as FixedPositionPluginConfig | undefined
-    if (plugin === undefined || plugin.enabled !== true) return []
+    if (
+      plugin === null ||
+      typeof plugin !== 'object' ||
+      plugin.enabled !== true
+    )
+      return []
 
     const providers = pipedProvidersOf(snapshot)
     // settings.json missing, or pipedProviders malformed. Half the
