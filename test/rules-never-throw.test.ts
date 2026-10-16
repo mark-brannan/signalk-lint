@@ -8,6 +8,10 @@
  * This runs every registered rule against garbage: whole-snapshot garbage, and
  * every real fixture with each node replaced in turn by a wrongly typed value.
  * A new rule is covered the moment it is added to the registry.
+ *
+ * Limit: mutations only replace nodes that already exist in a fixture. A field
+ * a rule reads that no fixture sets is never made garbage, so this is a net
+ * for regressions, not a proof; add a fixture that sets the field to extend it.
  */
 import { describe, expect, it } from 'vitest'
 import { readdirSync, readFileSync } from 'node:fs'

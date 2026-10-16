@@ -24,18 +24,7 @@
  * knowledge of one plugin's default behaviour.
  */
 import { Rule, RuleFinding, Snapshot } from '../types.js'
-
-interface VenusPluginConfig {
-  enabled?: boolean
-  configuration?: {
-    useDeviceNames?: boolean
-    instanceMappings?: unknown[]
-  }
-}
-
-function isObject(value: unknown): value is Record<string, unknown> {
-  return value !== null && typeof value === 'object'
-}
+import { isObject } from '../is-object.js'
 
 export const venusRawDeviceInstance: Rule = {
   id: 'plugin/venus-raw-device-instance',

@@ -13,16 +13,13 @@
  * carrying the loader's job.
  */
 import { SNAPSHOT_SCHEMA_VERSION, Snapshot } from './types.js'
+import { isObject } from './is-object.js'
 
 export class SnapshotError extends Error {
   constructor(message: string) {
     super(message)
     this.name = 'SnapshotError'
   }
-}
-
-function isObject(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
 /**
