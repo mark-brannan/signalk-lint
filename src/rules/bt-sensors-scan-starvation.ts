@@ -107,9 +107,17 @@ export const btSensorsScanStarvation: Rule = {
     if (plugins === null) return []
 
     const plugin = plugins[PLUGIN_ID] as BtSensorsPluginConfig | undefined
-    if (plugin === undefined || plugin.enabled !== true) return []
+    if (
+      plugin === null ||
+      typeof plugin !== 'object' ||
+      plugin.enabled !== true
+    )
+      return []
 
-    const config = plugin.configuration ?? {}
+    const config =
+      plugin.configuration !== null && typeof plugin.configuration === 'object'
+        ? plugin.configuration
+        : {}
     const interval = effective(
       config.discoveryInterval,
       DEFAULT_DISCOVERY_INTERVAL

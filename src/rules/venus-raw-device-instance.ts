@@ -33,6 +33,10 @@ interface VenusPluginConfig {
   }
 }
 
+function isObject(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object'
+}
+
 export const venusRawDeviceInstance: Rule = {
   id: 'plugin/venus-raw-device-instance',
   description:
@@ -44,10 +48,10 @@ export const venusRawDeviceInstance: Rule = {
     const plugins = snapshot.server.pluginConfig
     if (plugins === null) return []
 
-    const venus = plugins.venus as VenusPluginConfig | undefined
-    if (venus === undefined || venus.enabled !== true) return []
+    const venus: unknown = plugins.venus
+    if (!isObject(venus) || venus.enabled !== true) return []
 
-    const config = venus.configuration ?? {}
+    const config = isObject(venus.configuration) ? venus.configuration : {}
     if (config.useDeviceNames === true) return []
 
     const mappings = config.instanceMappings

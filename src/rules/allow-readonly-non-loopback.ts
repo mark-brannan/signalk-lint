@@ -16,8 +16,8 @@
  */
 import { Rule, RuleFinding, Snapshot } from '../types.js'
 
-function isLoopback(addr: string | null): boolean {
-  if (addr === null) return false
+function isLoopback(addr: unknown): boolean {
+  if (typeof addr !== 'string') return false
   // Normalize to lowercase for comparison
   const normalized = addr.toLowerCase()
   return (
